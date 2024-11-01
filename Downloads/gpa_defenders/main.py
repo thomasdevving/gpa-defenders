@@ -311,9 +311,6 @@ class Game:
         self._draw_ui()
         self._draw_pause_btn()
 
-        if self.game_manager.game_over:
-            self._draw_game_over()
-
         pygame.display.flip()
 
     def _draw_pause_btn(self) -> None:

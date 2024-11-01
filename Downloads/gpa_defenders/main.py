@@ -6,8 +6,7 @@ Start het spel door dit bestand te runnen:
 
 import math
 import pygame
-import sys
-from src.ui.screens import show_start_screen, show_pause_menu, show_tutorial_screen
+from src.ui.screens import show_start_screen, show_pause_menu, show_tutorial_screen, show_game_over_screen
 from src.settings import (
     SCREEN_WIDTH, SCREEN_HEIGHT, FPS, TITLE,
     TILE_SIZE, GRID_COLS, GRID_ROWS,
@@ -85,7 +84,7 @@ class Game:
                             -math.pi * 0.5, math.pi * 0.5, 3)
             # Stoom
             sc = (185, 188, 205) if active else (70, 68, 65)
-            for j, ox in enumerate((-int(sz * 0.2), 0, int(sz * 0.2))):
+            for ox in (-int(sz * 0.2), 0, int(sz * 0.2)):
                 for k in range(2):
                     y1 = cy - int(sz * 0.18) - k * 7
                     pygame.draw.line(self.screen, sc,
@@ -357,41 +356,29 @@ class Game:
         # Toren selectiekaarten
         self._draw_tower_cards(ui_y)
 
-    def _draw_game_over(self) -> None:
-        """Teken het game over scherm."""
-        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 150))
-        self.screen.blit(overlay, (0, 0))
+    def run(self) -> bool:
+        """Start de game loop.
 
-        big_font = pygame.font.SysFont(None, 72)
-        text = big_font.render("GEZAKT!", True, RED)
-        self.screen.blit(
-            text,
-            (SCREEN_WIDTH // 2 - text.get_width() // 2,
-             SCREEN_HEIGHT // 2 - text.get_height() // 2)
-        )
-
-        sub_text = self.font.render(
-            f"Je hebt {self.wave_manager.wave} waves overleefd!", True, WHITE
-        )
-        self.screen.blit(
-            sub_text,
-            (SCREEN_WIDTH // 2 - sub_text.get_width() // 2,
-             SCREEN_HEIGHT // 2 + 50)
-        )
-
-    def run(self) -> None:
-        """Start de game loop."""
-        running = True
-        while running:
+        Returns:
+            True  → speler wil opnieuw spelen.
+            False → speler wil afsluiten.
+        """
+        while True:
             dt = self.clock.tick(FPS) / 1000.0
 
-            running = self.handle_events()
+            if not self.handle_events():
+                return False
+
             self.update(dt)
             self.draw()
 
-        pygame.quit()
-        sys.exit()
+            if self.game_manager.game_over:
+                pygame.display.flip()
+                return show_game_over_screen(
+                    self.screen, self.clock,
+                    self.wave_manager.wave,
+                    self.game_manager.gpa,
+                )
 
 
 if __name__ == "__main__":
@@ -402,5 +389,7 @@ if __name__ == "__main__":
 
     if show_start_screen(screen, clock):
         if show_tutorial_screen(screen, clock):
-            game = Game(screen=screen, clock=clock)
-            game.run()
+            while True:
+                game = Game(screen=screen, clock=clock)
+                if not game.run():
+                    break

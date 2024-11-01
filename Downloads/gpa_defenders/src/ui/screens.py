@@ -431,6 +431,135 @@ def _controls(surf: pygame.Surface, font: pygame.font.Font, cx: int, y: int) -> 
         x += item_w + spacing
 
 
+# ── Game over scherm ──────────────────────────────────────────────────────────
+
+def show_game_over_screen(screen: pygame.Surface, clock: pygame.time.Clock,
+                          waves: int, final_gpa: float) -> bool:
+    """Toon het game over scherm.
+
+    Returns:
+        True  → opnieuw spelen.
+        False → afsluiten.
+    """
+    cx = SCREEN_WIDTH // 2
+
+    font_big   = pygame.font.SysFont(None, 110, bold=True)
+    font_sub   = pygame.font.SysFont(None, 36,  bold=True)
+    font_stat  = pygame.font.SysFont(None, 30)
+    font_btn   = pygame.font.SysFont(None, 34,  bold=True)
+    font_small = pygame.font.SysFont(None, 22)
+
+    bw, bh = 260, 58
+    btn_retry = pygame.Rect(cx - bw - 16, 530, bw, bh)
+    btn_quit  = pygame.Rect(cx + 16,      530, bw, bh)
+
+    # Statistieken
+    gpa_kleur = (80, 200, 80) if final_gpa >= 7.0 else (255, 200, 50) if final_gpa >= 5.5 else RED
+    stats = [
+        ("Waves overleefd",  str(waves),         YELLOW),
+        ("Eind GPA",         f"{final_gpa:.1f}", gpa_kleur),
+    ]
+
+    # Animatievariabelen
+    tick = 0
+    # Vallende diploma-snippers (x, y, snelheid, rotatie, rot_snelheid, kleur)
+    import random
+    rng = random.Random(42)
+    snippers = [
+        (rng.randint(0, SCREEN_WIDTH),
+         rng.randint(-SCREEN_HEIGHT, 0),
+         rng.uniform(60, 140),
+         rng.uniform(0, 360),
+         rng.uniform(-90, 90),
+         rng.choice([(220, 50, 50), (180, 30, 30), (255, 80, 80), (140, 20, 20)]))
+        for _ in range(28)
+    ]
+
+    while True:
+        dt = clock.tick(60) / 1000.0
+        tick += dt
+        mx, my = pygame.mouse.get_pos()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return False
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    return False
+                if event.key == pygame.K_RETURN:
+                    return True
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if btn_retry.collidepoint(mx, my):
+                    return True
+                if btn_quit.collidepoint(mx, my):
+                    return False
+
+        # ── Achtergrond ──────────────────────────────────────────────────────
+        screen.fill((18, 10, 10))
+        # Rode gloed in het midden
+        for r in range(280, 0, -20):
+            alpha = max(0, 38 - r // 8)
+            s = pygame.Surface((r * 2, r * 2), pygame.SRCALPHA)
+            pygame.draw.circle(s, (180, 20, 20, alpha), (r, r), r)
+            screen.blit(s, (cx - r, SCREEN_HEIGHT // 2 - r))
+
+        # Vallende rode snippers (gesimplificeerd als rechthoekjes)
+        for i, (sx, sy, spd, rot, rspd, sc) in enumerate(snippers):
+            ny = (sy + spd * tick) % (SCREEN_HEIGHT + 40)
+            nr = (rot + rspd * tick) % 360
+            snippers[i] = (sx, sy, spd, rot, rspd, sc)
+            # Teken als klein rechthoekje (rotatie simuleren met breedte)
+            w = max(2, int(8 * abs(math.cos(math.radians(nr)))))
+            pygame.draw.rect(screen, sc, (int(sx), int(ny), w, 10))
+
+        # ── Titel ─────────────────────────────────────────────────────────────
+        shake = int(2 * math.sin(tick * 18)) if tick < 1.5 else 0
+        _outlined(screen, font_big, "GEZAKT!",
+                  cx + shake, 80, RED, (60, 0, 0), thick=5)
+
+        sub = font_sub.render("Je GPA is niet gehaald.", True, (200, 160, 160))
+        screen.blit(sub, (cx - sub.get_width() // 2, 195))
+
+        # ── Statistieken paneel ───────────────────────────────────────────────
+        panel = pygame.Rect(cx - 200, 250, 400, 120)
+        pygame.draw.rect(screen, (35, 18, 18), panel, border_radius=10)
+        pygame.draw.rect(screen, (100, 40, 40), panel, 2, border_radius=10)
+
+        for i, (label, waarde, kleur) in enumerate(stats):
+            y = panel.y + 18 + i * 48
+            lbl_s = font_stat.render(label, True, (160, 130, 130))
+            val_s = font_stat.render(waarde, True, kleur)
+            screen.blit(lbl_s, (panel.x + 24, y))
+            screen.blit(val_s, (panel.right - val_s.get_width() - 24, y))
+            if i < len(stats) - 1:
+                pygame.draw.line(screen, (70, 30, 30),
+                                 (panel.x + 16, y + 36), (panel.right - 16, y + 36), 1)
+
+        # ── Knoppen ───────────────────────────────────────────────────────────
+        for rect, label, is_retry in [
+            (btn_retry, "Opnieuw spelen", True),
+            (btn_quit,  "Afsluiten",      False),
+        ]:
+            hov = rect.collidepoint(mx, my)
+            if is_retry:
+                bg  = (45, 105, 45) if hov else (30, 75, 30)
+                bdr = (80, 170, 80)
+            else:
+                bg  = (110, 30, 30) if hov else (75, 20, 20)
+                bdr = (190, 60, 60)
+            pygame.draw.rect(screen, bg,  rect, border_radius=8)
+            pygame.draw.rect(screen, bdr, rect, 2, border_radius=8)
+            ls = font_btn.render(label, True, WHITE)
+            screen.blit(ls, (rect.centerx - ls.get_width() // 2,
+                             rect.centery - ls.get_height() // 2))
+
+        hint = font_small.render("ENTER om opnieuw te spelen  •  ESC om af te sluiten",
+                                 True, (90, 60, 60))
+        screen.blit(hint, (cx - hint.get_width() // 2, btn_retry.bottom + 14))
+
+        pygame.display.flip()
+
+
 # ── Pauzemenu ─────────────────────────────────────────────────────────────────
 
 def show_pause_menu(screen: pygame.Surface, clock: pygame.time.Clock) -> bool:

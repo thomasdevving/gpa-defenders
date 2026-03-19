@@ -7,6 +7,7 @@ from src.entities.tower import create_tower
 from src.settings import STARTING_GPA, STARTING_ECTS, FAILING_GPA, TOWER_TYPES
 
 if TYPE_CHECKING:
+    from src.managers.grid import GridMap
     from src.managers.wave_manager import WaveManager
 
 
@@ -53,6 +54,29 @@ class GameManager:
         self.towers.append(tower)
         self.ects -= cost
         return True
+
+    def get_tower_at(self, grid_x: int, grid_y: int):
+        """Zoek een toren op grid positie."""
+        for tower in self.towers:
+            if tower.grid_x == grid_x and tower.grid_y == grid_y:
+                return tower
+        return None
+
+    def sell_tower_at(self, grid_x: int, grid_y: int, grid_map: "GridMap") -> int:
+        """Verkoop toren op een cel en geef 75% van de kost terug.
+
+        Returns:
+            Teruggegeven ECTS. 0 als er geen toren op die cel staat.
+        """
+        tower = self.get_tower_at(grid_x, grid_y)
+        if tower is None:
+            return 0
+
+        refund = int(tower.cost * 0.75)
+        self.towers.remove(tower)
+        grid_map.remove_tower(grid_x, grid_y)
+        self.ects += refund
+        return refund
 
     def add_enemies(self, enemies: list) -> None:
         """Voeg een batch vijanden toe aan het speelveld."""

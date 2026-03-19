@@ -61,6 +61,18 @@ class Game:
         self.net: NetworkClient | None = network_client
         self.is_host = is_host
 
+        # Geselecteerde toren (voor verkoop-UI)
+        self.selected_tower = None
+        self._sell_btn: pygame.Rect | None = None
+
+        # Snelheidsknop
+        ui_y = GRID_ROWS * TILE_SIZE
+        self.speed_btn = pygame.Rect(348, ui_y + 8, 82, 58)
+
+        # Automatische wave-countdown
+        self._wave_countdown: float = 5.0   # initieel 5s voor eerste wave
+        self._was_wave_active: bool = False  # vorige frame state
+
         # Speler 2
         self.multiplayer = multiplayer or (network_client is not None)
         if self.multiplayer and network_client is None:
@@ -251,9 +263,7 @@ class Game:
                     if result == 'menu':
                         return 'menu'
                 if event.key == pygame.K_SPACE and not self.wave_manager.wave_active:
-                    self.game_manager.add_enemies(self.wave_manager.spawn_wave())
-                    if self.net:
-                        self.net.send({"type": "START_WAVE"})
+                    self._wave_countdown = 0.0  # sla countdown over
 
                 # P1: toren selectie met cijfertoetsen
                 for i, tower_type in enumerate(self.tower_types_list):
@@ -279,47 +289,69 @@ class Game:
                             if event.key == kp and i < len(self.tower_types_list):
                                 self.p2_tower_type = self.tower_types_list[i]
 
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if self.pause_btn.collidepoint(event.pos):
-                    result = show_pause_menu(self.screen, self.clock)
-                    if result == 'quit':
-                        return False
-                    if result == 'menu':
-                        return 'menu'
-                else:
-                    self._handle_click(event.pos)
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 3:  # rechtermuisknop → deselect
+                    self.selected_tower = None
+                elif event.button == 1:
+                    if self.pause_btn.collidepoint(event.pos):
+                        result = show_pause_menu(self.screen, self.clock)
+                        if result == 'quit':
+                            return False
+                        if result == 'menu':
+                            return 'menu'
+                    else:
+                        self._handle_click(event.pos)
 
         return True
 
     def _handle_click(self, pos: tuple[int, int]) -> None:
-        """Verwerk een muisklik: torenselectie of toren plaatsen.
-
-        Args:
-            pos: (x, y) positie van de klik.
-        """
+        """Verwerk een muisklik: torenselectie, verkoop of toren plaatsen."""
         mx, my = pos
+
+        # Klik op verkoopknop (onderdeel van de sell panel)
+        if self._sell_btn and self._sell_btn.collidepoint(mx, my) and self.selected_tower:
+            self.game_manager.sell_tower_at(
+                self.selected_tower.grid_x, self.selected_tower.grid_y, self.grid_map)
+            self.selected_tower = None
+            self._sell_btn = None
+            return
+
+        # Klik op snelheidsknop
+        if self.speed_btn.collidepoint(mx, my):
+            self.game_manager.cycle_speed()
+            return
 
         # Klik op een toren-selectiekaart
         for tower_type, rect in self.tower_cards.items():
             if rect.collidepoint(mx, my):
+                self.selected_tower = None
                 self.selected_tower_type = tower_type
                 return
 
+        # Klik buiten het grid → deselect
         grid_x = mx // TILE_SIZE
         grid_y = my // TILE_SIZE
+        if not self.grid_map.is_within_bounds(grid_x, grid_y):
+            self.selected_tower = None
+            return
 
-        # Plaatsingsregels zitten in de map manager
+        # Klik op een cel met een toren → selecteer voor verkoop
+        if self.grid_map.grid[grid_y][grid_x] == 2:
+            tower = self.game_manager.get_tower_at(grid_x, grid_y)
+            self.selected_tower = tower if tower != self.selected_tower else None
+            return
+
+        # Klik op lege cel → deselect en probeer toren te plaatsen
+        self.selected_tower = None
+
         if not self.grid_map.can_place_tower(grid_x, grid_y):
             return
 
-        # Check resources en plaats toren in game manager
         if not self.game_manager.place_tower(self.selected_tower_type, grid_x, grid_y):
             return
 
-        # Markeer de cel als bezet op de map
         self.grid_map.place_tower(grid_x, grid_y)
 
-        # Stuur plaatsing door naar tegenstander
         if self.net:
             self.net.send({
                 "type": "PLACE_TOWER",
@@ -367,6 +399,108 @@ class Game:
                 self.net.disconnect()
                 self.net = None
 
+    def _draw_wave_countdown(self) -> None:
+        """Toon een countdown-banner bovenin als er een wave op komst is."""
+        secs = self._wave_countdown
+        if secs <= 0:
+            return
+        next_wave = self.wave_manager.wave + 1
+        grid_h = GRID_ROWS * TILE_SIZE
+
+        # Banner hoogte en breedte
+        bw, bh = 340, 54
+        bx = SCREEN_WIDTH // 2 - bw // 2
+        by = 10
+
+        # Achtergrond
+        bg = pygame.Surface((bw, bh), pygame.SRCALPHA)
+        bg.fill((10, 10, 18, 195))
+        self.screen.blit(bg, (bx, by))
+        pygame.draw.rect(self.screen, (80, 130, 210), (bx, by, bw, bh), 2, border_radius=8)
+
+        # Tekst
+        font_big = pygame.font.SysFont(None, 28, bold=True)
+        font_sm  = pygame.font.SysFont(None, 20)
+
+        label = font_big.render(f"Wave {next_wave} begint over {math.ceil(secs)}s", True, WHITE)
+        self.screen.blit(label, (SCREEN_WIDTH // 2 - label.get_width() // 2, by + 7))
+
+        hint = font_sm.render("SPACE om direct te starten", True, (130, 140, 170))
+        self.screen.blit(hint, (SCREEN_WIDTH // 2 - hint.get_width() // 2, by + 32))
+
+        # Voortgangsbalk (totale wachttijd voor huidige fase)
+        total = 5.0 if self.wave_manager.wave == 0 else 8.0
+        frac = max(0.0, 1.0 - secs / total)
+        bar_x, bar_y = bx + 10, by + bh + 4
+        bar_w = bw - 20
+        pygame.draw.rect(self.screen, (40, 44, 60), (bar_x, bar_y, bar_w, 5), border_radius=2)
+        pygame.draw.rect(self.screen, (80, 130, 210),
+                         (bar_x, bar_y, int(bar_w * frac), 5), border_radius=2)
+
+    def _draw_sell_panel(self, tower) -> None:
+        """Teken de verkooppanel boven de geselecteerde toren."""
+        # Bereikscirkel
+        tower.draw_range(self.screen)
+
+        pw, ph = 178, 84
+        # Positie boven de toren, binnen scherm houden
+        px = max(4, min(int(tower.x) - pw // 2, SCREEN_WIDTH - pw - 4))
+        py = max(4, int(tower.y) - TILE_SIZE // 2 - ph - 6)
+
+        # Achtergrond
+        panel = pygame.Rect(px, py, pw, ph)
+        pygame.draw.rect(self.screen, (28, 26, 22), panel, border_radius=8)
+        pygame.draw.rect(self.screen, (228, 202, 98), panel, 2, border_radius=8)
+
+        # Naam
+        nf = pygame.font.SysFont(None, 22, bold=True)
+        ns = nf.render(tower.name, True, WHITE)
+        self.screen.blit(ns, (panel.centerx - ns.get_width() // 2, panel.y + 8))
+
+        # Verkoopwaarde
+        refund = int(tower.energy_cost * 0.75)
+        vf = pygame.font.SysFont(None, 20)
+        vs = vf.render(f"Verkoopt voor {refund} Energy", True, (170, 165, 140))
+        self.screen.blit(vs, (panel.centerx - vs.get_width() // 2, panel.y + 28))
+
+        # Verkoopknop
+        bw, bh = pw - 20, 26
+        self._sell_btn = pygame.Rect(panel.x + 10, panel.bottom - bh - 8, bw, bh)
+        mx, my = pygame.mouse.get_pos()
+        hov = self._sell_btn.collidepoint(mx, my)
+        pygame.draw.rect(self.screen, (160, 55, 35) if hov else (110, 35, 20),
+                         self._sell_btn, border_radius=5)
+        pygame.draw.rect(self.screen, (220, 90, 60), self._sell_btn, 1, border_radius=5)
+        bf = pygame.font.SysFont(None, 20, bold=True)
+        bs = bf.render("Verkopen", True, WHITE)
+        self.screen.blit(bs, (self._sell_btn.centerx - bs.get_width() // 2,
+                               self._sell_btn.centery - bs.get_height() // 2))
+
+    def _draw_speed_btn(self) -> None:
+        """Teken de snelheidsknop in de UI-balk."""
+        speed = self.game_manager.speed_multiplier
+        mx, my = pygame.mouse.get_pos()
+        hov = self.speed_btn.collidepoint(mx, my)
+
+        bg = (60, 58, 52) if hov else (40, 38, 34)
+        pygame.draw.rect(self.screen, bg, self.speed_btn, border_radius=6)
+        border_col = (228, 202, 98) if speed > 1.0 else (110, 104, 92)
+        pygame.draw.rect(self.screen, border_col, self.speed_btn, 2, border_radius=6)
+
+        # Label
+        lf = pygame.font.SysFont(None, 18)
+        ls = lf.render("SNELHEID", True, (120, 114, 100))
+        self.screen.blit(ls, (self.speed_btn.centerx - ls.get_width() // 2,
+                               self.speed_btn.y + 6))
+
+        # Speed waarde
+        speed_col = (255, 200, 50) if speed > 1.0 else WHITE
+        sf = pygame.font.SysFont(None, 32, bold=True)
+        label = f"{int(speed)}x" if speed == int(speed) else f"{speed}x"
+        ss = sf.render(label, True, speed_col)
+        self.screen.blit(ss, (self.speed_btn.centerx - ss.get_width() // 2,
+                               self.speed_btn.centery - 2))
+
     def _draw_p2_cursor(self) -> None:
         """Teken de cursor van speler 2 op het grid."""
         x = self.p2_gx * TILE_SIZE
@@ -383,12 +517,23 @@ class Game:
         self.screen.blit(lbl, (x + 3, y + 3))
 
     def update(self, dt: float) -> None:
-        """Update alle game objecten.
-
-        Args:
-            dt: Delta time in seconden.
-        """
+        """Update alle game objecten."""
         self.game_manager.update(dt, self.wave_manager)
+
+        # Detecteer einde van een wave en reset countdown
+        just_ended = self._was_wave_active and not self.wave_manager.wave_active
+        self._was_wave_active = self.wave_manager.wave_active
+        if just_ended:
+            self._wave_countdown = 8.0
+
+        # Automatische wave-start zodra countdown afloopt
+        if not self.wave_manager.wave_active and not self.game_manager.game_over:
+            self._wave_countdown -= dt
+            if self._wave_countdown <= 0.0:
+                self._wave_countdown = 0.0
+                self.game_manager.add_enemies(self.wave_manager.spawn_wave())
+                if self.net:
+                    self.net.send({"type": "START_WAVE"})
 
     def draw(self) -> None:
         """Teken alles op het scherm."""
@@ -417,8 +562,19 @@ class Game:
         if self.multiplayer and self.net is None:
             self._draw_p2_cursor()
 
+        # Wave-countdown banner
+        if not self.wave_manager.wave_active and not self.game_manager.game_over:
+            self._draw_wave_countdown()
+
+        # Sell panel boven geselecteerde toren
+        if self.selected_tower:
+            self._draw_sell_panel(self.selected_tower)
+        else:
+            self._sell_btn = None
+
         # Teken UI
         self._draw_ui()
+        self._draw_speed_btn()
         self._draw_pause_btn()
 
         pygame.display.flip()
@@ -456,9 +612,9 @@ class Game:
         wave_text = self.font.render(f"Wave: {self.wave_manager.wave}", True, WHITE)
         self.screen.blit(wave_text, (180, ui_y + 10))
 
-        if not self.wave_manager.wave_active:
-            hint = self.small_font.render("[SPACE] Volgende wave", True, GRAY)
-            self.screen.blit(hint, (180, ui_y + 40))
+        if self.wave_manager.wave_active:
+            active_hint = self.small_font.render("Wave bezig...", True, GRAY)
+            self.screen.blit(active_hint, (180, ui_y + 40))
 
         # P2 indicator (alleen lokale co-op)
         if self.multiplayer and self.net is None:

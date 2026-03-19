@@ -6,7 +6,7 @@ Een tower defense game waarin je je GPA verdedigt tegen een eindeloze stroom van
 
 Je GPA begint op **10.0**. Vijanden (opdrachten, tentamens, deadlines, professors) lopen over een pad richting je GPA. Als ze er doorheen komen, verlagen ze je cijfer. Zakt je GPA onder de **5.5**? Dan ben je gezakt!
 
-Plaats torens (koffie, studiegroepen, tutors, energy drinks) langs het pad om vijanden tegen te houden. Verdien studiepunten (ECTS) door vijanden te verslaan en gebruik die om betere torens te bouwen.
+Plaats torens (koffie, studiegroepen, tutors, energy drinks) langs het pad om vijanden tegen te houden. Verdien **Energy** door vijanden te verslaan en gebruik die om betere torens te bouwen.
 
 ## Hoe te spelen
 
@@ -26,10 +26,10 @@ Plaats torens (koffie, studiegroepen, tutors, energy drinks) langs het pad om vi
 
 | Toren | Kosten | Omschrijving |
 |-------|--------|-------------|
-| ☕ Koffie | 5 ECTS | Basis toren, schiet cafeïne |
-| 📚 Studiegroep | 10 ECTS | Vertraagt vijanden |
-| 🎓 Tutor | 20 ECTS | Hoge schade, langzaam |
-| ⚡ Energy Drink | 15 ECTS | Snelle aanval, lage schade |
+| ☕ Koffie | 200 Energy | Basis toren, schiet cafeïne |
+| 📚 Studiegroep | 400 Energy | Vertraagt vijanden |
+| 🎓 Tutor | 800 Energy | Hoge schade, langzaam |
+| ⚡ Energy Drink | 600 Energy | Snelle aanval, lage schade |
 
 ## Vijanden
 

@@ -34,7 +34,10 @@ class Tower(Entity):
         config = TOWER_TYPES[tower_type]
         self.tower_type = tower_type
         self.name = config["name"]
-        self.cost = config["cost"]
+        self.costs = config.get("costs", {"energy": config["cost"]})
+        self.energy_cost = self.costs.get("energy", 0)
+        # Backward compatibility for current UI/logic paths.
+        self.cost = self.energy_cost
         self.damage = config["damage"]
         self.range = config["range"]
         self.fire_rate = config["fire_rate"]

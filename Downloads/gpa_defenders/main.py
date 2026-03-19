@@ -173,7 +173,7 @@ class Game:
         for i, (tower_type, rect) in enumerate(self.tower_cards.items()):
             config = TOWER_TYPES[tower_type]
             is_sel = tower_type == self.selected_tower_type
-            can_afford = self.game_manager.ects >= config["cost"]
+            can_afford = self.game_manager.energy >= config["cost"]
             hovered = rect.collidepoint(mx, my) and not is_sel and can_afford
 
             # Achtergrond
@@ -215,9 +215,9 @@ class Game:
             self.screen.blit(name_s, (rect.centerx - name_s.get_width() // 2,
                                       rect.bottom - 38))
 
-            # ECTS-badge
+            # Energy-badge
             cc = YELLOW if can_afford else (98, 90, 62)
-            cost_s = cost_font.render(f"{config['cost']} ECTS", True, cc)
+            cost_s = cost_font.render(f"{config['cost']} Energy", True, cc)
             cb_x = rect.centerx - cost_s.get_width() // 2 - 5
             cb_y = rect.bottom - 20
             pygame.draw.rect(self.screen, (28, 25, 20),
@@ -397,9 +397,9 @@ class Game:
         gpa_text = self.font.render(f"GPA: {gpa:.1f}", True, gpa_color)
         self.screen.blit(gpa_text, (20, ui_y + 10))
 
-        # ECTS
-        ects_text = self.font.render(f"ECTS: {self.game_manager.ects}", True, YELLOW)
-        self.screen.blit(ects_text, (20, ui_y + 40))
+        # Energy
+        energy_text = self.font.render(f"Energy: {self.game_manager.energy}", True, YELLOW)
+        self.screen.blit(energy_text, (20, ui_y + 40))
 
         # Wave
         wave_text = self.font.render(f"Wave: {self.wave_manager.wave}", True, WHITE)

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from src.entities.projectile import Projectile
 from src.entities.tower import create_tower
-from src.settings import STARTING_GPA, STARTING_ECTS, FAILING_GPA, TOWER_TYPES
+from src.settings import STARTING_GPA, STARTING_ENERGY, FAILING_GPA, TOWER_TYPES
 
 if TYPE_CHECKING:
     from src.managers.grid import GridMap
@@ -16,7 +16,7 @@ class GameManager:
 
     def __init__(self):
         self.gpa = STARTING_GPA
-        self.ects = STARTING_ECTS
+        self.currencies = {"energy": STARTING_ENERGY}
         self.game_over = False
         self.allowed_speeds = (1.0, 2.0, 4.0)
         self.speed_multiplier = 1.0
@@ -24,6 +24,14 @@ class GameManager:
         self.towers: list = []
         self.enemies: list = []
         self.projectiles: list = []
+
+    @property
+    def energy(self) -> int:
+        return self.currencies["energy"]
+
+    @energy.setter
+    def energy(self, value: int) -> None:
+        self.currencies["energy"] = max(0, int(value))
 
     def set_speed(self, multiplier: float) -> None:
         """Zet de gamesnelheid op 1x, 2x of 4x."""
@@ -39,20 +47,42 @@ class GameManager:
         self.speed_multiplier = self.allowed_speeds[(idx + 1) % len(self.allowed_speeds)]
         return self.speed_multiplier
 
+    def get_currency(self, currency: str) -> int:
+        """Geef het huidige saldo van een currency."""
+        return self.currencies.get(currency, 0)
+
+    def add_currency(self, currency: str, amount: int) -> None:
+        """Voeg currency toe (of trek af bij negatieve amount)."""
+        current = self.get_currency(currency)
+        self.currencies[currency] = max(0, current + int(amount))
+
+    def can_afford_costs(self, costs: dict[str, int]) -> bool:
+        """Check of alle benodigde currencies beschikbaar zijn."""
+        return all(self.get_currency(cur) >= amount for cur, amount in costs.items())
+
+    def spend_costs(self, costs: dict[str, int]) -> bool:
+        """Probeer een costs-pakket af te schrijven."""
+        if not self.can_afford_costs(costs):
+            return False
+        for cur, amount in costs.items():
+            self.add_currency(cur, -amount)
+        return True
+
     def can_afford_tower(self, tower_type: str) -> bool:
-        """Check of de speler genoeg ECTS heeft voor een toren."""
-        cost = TOWER_TYPES[tower_type]["cost"]
-        return self.ects >= cost
+        """Check of de speler genoeg resources heeft voor een toren."""
+        config = TOWER_TYPES[tower_type]
+        costs = config.get("costs", {"energy": config["cost"]})
+        return self.can_afford_costs(costs)
 
     def place_tower(self, tower_type: str, grid_x: int, grid_y: int) -> bool:
-        """Plaats een toren als de speler genoeg ECTS heeft."""
-        if not self.can_afford_tower(tower_type):
+        """Plaats een toren als de speler genoeg resources heeft."""
+        config = TOWER_TYPES[tower_type]
+        costs = config.get("costs", {"energy": config["cost"]})
+        if not self.spend_costs(costs):
             return False
 
-        cost = TOWER_TYPES[tower_type]["cost"]
         tower = create_tower(tower_type, grid_x, grid_y)
         self.towers.append(tower)
-        self.ects -= cost
         return True
 
     def get_tower_at(self, grid_x: int, grid_y: int):
@@ -66,16 +96,16 @@ class GameManager:
         """Verkoop toren op een cel en geef 75% van de kost terug.
 
         Returns:
-            Teruggegeven ECTS. 0 als er geen toren op die cel staat.
+            Teruggegeven energy. 0 als er geen toren op die cel staat.
         """
         tower = self.get_tower_at(grid_x, grid_y)
         if tower is None:
             return 0
 
-        refund = int(tower.cost * 0.75)
+        refund = int(tower.energy_cost * 0.75)
         self.towers.remove(tower)
         grid_map.remove_tower(grid_x, grid_y)
-        self.ects += refund
+        self.add_currency("energy", refund)
         return refund
 
     def add_enemies(self, enemies: list) -> None:
@@ -106,7 +136,7 @@ class GameManager:
                 self.gpa -= enemy.gpa_damage
                 enemy.alive = False
             if not enemy.alive and not enemy.reached_end:
-                self.ects += enemy.ects_reward
+                self.add_currency("energy", enemy.energy_reward)
 
         # Update projectielen
         for proj in self.projectiles:

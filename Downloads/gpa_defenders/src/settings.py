@@ -31,14 +31,16 @@ GRASS_COLOR = (100, 160, 80)
 STARTING_GPA = 10.0
 FAILING_GPA = 5.5
 
-# Startgeld
-STARTING_ECTS = 30
+# Economy
+ECONOMY_SCALE = 40
+STARTING_ENERGY = 30 * ECONOMY_SCALE
 
 # Tower definities: (naam, kosten, schade, bereik, vuursnelheid, kleur)
 TOWER_TYPES = {
     "coffee": {
         "name": "Koffie",
-        "cost": 5,
+        "cost": 5 * ECONOMY_SCALE,
+        "costs": {"energy": 5 * ECONOMY_SCALE},
         "damage": 2,
         "range": 120,
         "fire_rate": 1.0,  # schoten per seconde
@@ -48,7 +50,8 @@ TOWER_TYPES = {
     },
     "study_group": {
         "name": "Studiegroep",
-        "cost": 10,
+        "cost": 10 * ECONOMY_SCALE,
+        "costs": {"energy": 10 * ECONOMY_SCALE},
         "damage": 1,
         "range": 100,
         "fire_rate": 0.5,
@@ -60,7 +63,8 @@ TOWER_TYPES = {
     },
     "tutor": {
         "name": "Tutor",
-        "cost": 20,
+        "cost": 20 * ECONOMY_SCALE,
+        "costs": {"energy": 20 * ECONOMY_SCALE},
         "damage": 8,
         "range": 150,
         "fire_rate": 0.3,
@@ -70,7 +74,8 @@ TOWER_TYPES = {
     },
     "energy_drink": {
         "name": "Energy Drink",
-        "cost": 15,
+        "cost": 15 * ECONOMY_SCALE,
+        "costs": {"energy": 15 * ECONOMY_SCALE},
         "damage": 1,
         "range": 100,
         "fire_rate": 3.0,
@@ -80,14 +85,14 @@ TOWER_TYPES = {
     },
 }
 
-# Enemy definities: (naam, hp, snelheid, gpa_schade, ects_beloning, kleur)
+# Enemy definities: (naam, hp, snelheid, gpa_schade, rewards, kleur)
 ENEMY_TYPES = {
     "opdracht": {
         "name": "Opdracht",
         "hp": 10,
         "speed": 60,
         "gpa_damage": 0.1,
-        "ects_reward": 3,
+        "rewards": {"energy": 3 * ECONOMY_SCALE},
         "color": WHITE,
     },
     "deadline": {
@@ -95,7 +100,7 @@ ENEMY_TYPES = {
         "hp": 8,
         "speed": 120,
         "gpa_damage": 0.2,
-        "ects_reward": 5,
+        "rewards": {"energy": 5 * ECONOMY_SCALE},
         "color": RED,
     },
     "tentamen": {
@@ -103,7 +108,7 @@ ENEMY_TYPES = {
         "hp": 40,
         "speed": 35,
         "gpa_damage": 0.5,
-        "ects_reward": 10,
+        "rewards": {"energy": 10 * ECONOMY_SCALE},
         "color": ORANGE,
     },
     "professor": {
@@ -111,7 +116,7 @@ ENEMY_TYPES = {
         "hp": 100,
         "speed": 25,
         "gpa_damage": 1.0,
-        "ects_reward": 25,
+        "rewards": {"energy": 25 * ECONOMY_SCALE},
         "color": DARK_GRAY,
     },
 }

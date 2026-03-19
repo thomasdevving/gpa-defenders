@@ -22,7 +22,7 @@ class Enemy(Entity):
         speed: Basissnelheid in pixels per seconde.
         current_speed: Huidige snelheid (kan vertraagd zijn).
         gpa_damage: Hoeveel GPA-schade bij het bereiken van het einde.
-        ects_reward: Hoeveel ECTS je krijgt bij het verslaan.
+        energy_reward: Hoeveel energy je krijgt bij het verslaan.
         color: Kleur van de vijand.
         waypoints: Lijst van (x, y) punten om te volgen.
         waypoint_index: Huidige waypoint index.
@@ -40,7 +40,8 @@ class Enemy(Entity):
         self.speed = config["speed"]
         self.current_speed = self.speed
         self.gpa_damage = config["gpa_damage"]
-        self.ects_reward = config["ects_reward"]
+        self.rewards = config["rewards"]
+        self.energy_reward = self.rewards.get("energy", 0)
         self.color = config["color"]
         self.name = config["name"]
 

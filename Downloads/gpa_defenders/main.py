@@ -6,6 +6,7 @@ Start het spel door dit bestand te runnen:
 
 import pygame
 import sys
+from src.ui.screens import show_start_screen
 from src.settings import (
     SCREEN_WIDTH, SCREEN_HEIGHT, FPS, TITLE,
     TILE_SIZE, GRID_COLS, GRID_ROWS,
@@ -35,11 +36,15 @@ class Game:
         selected_tower: Huidig geselecteerd torentype.
     """
 
-    def __init__(self):
-        pygame.init()
-        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-        pygame.display.set_caption(TITLE)
-        self.clock = pygame.time.Clock()
+    def __init__(self, screen: pygame.Surface = None, clock: pygame.time.Clock = None):
+        if not pygame.get_init():
+            pygame.init()
+        if screen is None:
+            self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+            pygame.display.set_caption(TITLE)
+        else:
+            self.screen = screen
+        self.clock = clock if clock is not None else pygame.time.Clock()
         self.font = pygame.font.SysFont(None, 28)
         self.small_font = pygame.font.SysFont(None, 22)
 
@@ -343,5 +348,11 @@ class Game:
 
 
 if __name__ == "__main__":
-    game = Game()
-    game.run()
+    pygame.init()
+    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+    pygame.display.set_caption(TITLE)
+    clock = pygame.time.Clock()
+
+    if show_start_screen(screen, clock):
+        game = Game(screen=screen, clock=clock)
+        game.run()

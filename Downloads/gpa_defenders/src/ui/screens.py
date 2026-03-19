@@ -512,6 +512,153 @@ def show_pause_menu(screen: pygame.Surface, clock: pygame.time.Clock) -> bool:
         pygame.display.flip()
 
 
+# ── Tutorial scherm ───────────────────────────────────────────────────────────
+
+def show_tutorial_screen(screen: pygame.Surface, clock: pygame.time.Clock) -> bool:
+    """Toon het uitlegscherm voor het spel begint.
+
+    Returns:
+        True  → speler wil starten.
+        False → speler sluit het venster.
+    """
+    cx = SCREEN_WIDTH // 2
+
+    font_title = pygame.font.SysFont(None, 52, bold=True)
+    font_head  = pygame.font.SysFont(None, 30, bold=True)
+    font_body  = pygame.font.SysFont(None, 24)
+    font_small = pygame.font.SysFont(None, 21)
+
+    bw, bh = 240, 56
+    btn = pygame.Rect(cx - bw // 2, SCREEN_HEIGHT - 72, bw, bh)
+
+    # ── Inhoud ────────────────────────────────────────────────────────────────
+    secties = [
+        {
+            "titel": "Doel van het spel",
+            "kleur": (255, 220, 60),
+            "regels": [
+                "Vijanden lopen over een pad richting jouw GPA.",
+                "Als ze het einde bereiken, daalt je GPA.",
+                "Zakt je GPA onder de 5,5? Dan ben je GEZAKT.",
+                "Overleef zoveel mogelijk waves!",
+            ],
+        },
+        {
+            "titel": "Torens plaatsen",
+            "kleur": (100, 200, 100),
+            "regels": [
+                "Klik op een groene grastegel om een toren te plaatsen.",
+                "Je betaalt met ECTS, verdiend door vijanden te verslaan.",
+                "Selecteer een toren via de kaarten onderaan of toets 1 t/m 4.",
+                "Je kunt geen torens op het pad plaatsen.",
+            ],
+        },
+        {
+            "titel": "Vijanden",
+            "kleur": (255, 120, 80),
+            "regels": [
+                "Opdracht: zwak, langzaam, weinig GPA-schade.",
+                "Deadline: snel en gevaarlijker.",
+                "Tentamen: veel HP, traag maar zware GPA-schade.",
+                "Professor: eindbaas met enorm HP en maximale schade.",
+            ],
+        },
+        {
+            "titel": "Torens",
+            "kleur": (120, 180, 255),
+            "regels": [
+                "Koffie (5 ECTS): snel vuren, lage schade.",
+                "Studiegroep (10 ECTS): vertraagt vijanden.",
+                "Tutor (20 ECTS): hoge schade, traag vuren.",
+                "Energy Drink (15 ECTS): extreem snel vuren.",
+            ],
+        },
+    ]
+
+    # Verdeel 4 secties in 2 kolommen × 2 rijen
+    COL_W    = SCREEN_WIDTH // 2 - 40
+    ROW_H    = 168
+    CARD_X   = [30, SCREEN_WIDTH // 2 + 10]
+    CARD_Y   = [118, 118 + ROW_H + 12]
+
+    while True:
+        clock.tick(60)
+        mx, my = pygame.mouse.get_pos()
+        btn_hov = btn.collidepoint(mx, my)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return False
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    return False
+                if event.key in (pygame.K_RETURN, pygame.K_SPACE):
+                    return True
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if btn.collidepoint(mx, my):
+                    return True
+
+        # ── Achtergrond ──────────────────────────────────────────────────────
+        screen.fill((22, 26, 38))
+        # Subtiele rasterlijnen
+        for gx in range(0, SCREEN_WIDTH, 48):
+            pygame.draw.line(screen, (30, 35, 50), (gx, 0), (gx, SCREEN_HEIGHT), 1)
+        for gy in range(0, SCREEN_HEIGHT, 48):
+            pygame.draw.line(screen, (30, 35, 50), (0, gy), (SCREEN_WIDTH, gy), 1)
+
+        # ── Koptitel ─────────────────────────────────────────────────────────
+        _outlined(screen, font_title, "Hoe werkt het?",
+                  cx, 28, WHITE, (10, 12, 22), thick=2)
+
+        # Scheidingslijn
+        pygame.draw.line(screen, (60, 68, 95),
+                         (30, 98), (SCREEN_WIDTH - 30, 98), 1)
+
+        # ── Sectiekaarten ─────────────────────────────────────────────────────
+        for idx, sectie in enumerate(secties):
+            col = idx % 2
+            row = idx // 2
+            cx_card = CARD_X[col]
+            cy_card = CARD_Y[row]
+
+            card_rect = pygame.Rect(cx_card, cy_card, COL_W, ROW_H)
+
+            # Kaart achtergrond
+            pygame.draw.rect(screen, (32, 38, 55), card_rect, border_radius=10)
+            # Gekleurde linkerrand
+            pygame.draw.rect(screen, sectie["kleur"],
+                             (cx_card, cy_card, 4, ROW_H), border_radius=2)
+            pygame.draw.rect(screen, (52, 60, 85), card_rect, 1, border_radius=10)
+
+            # Sectie titel
+            th = font_head.render(sectie["titel"], True, sectie["kleur"])
+            screen.blit(th, (cx_card + 14, cy_card + 10))
+
+            # Regels
+            for i, regel in enumerate(sectie["regels"]):
+                # Bullet
+                bul_x = cx_card + 14
+                bul_y = cy_card + 42 + i * 26 + 8
+                pygame.draw.circle(screen, sectie["kleur"], (bul_x, bul_y), 3)
+                rs = font_body.render(regel, True, (188, 195, 215))
+                screen.blit(rs, (bul_x + 10, cy_card + 42 + i * 26))
+
+        # ── Startknop ────────────────────────────────────────────────────────
+        bg_btn = (55, 115, 55) if btn_hov else (38, 85, 38)
+        pygame.draw.rect(screen, bg_btn, btn, border_radius=10)
+        pygame.draw.rect(screen, (90, 175, 90), btn, 2, border_radius=10)
+        lbl = font_head.render("Spel starten  ▶", True, WHITE)
+        screen.blit(lbl, (btn.centerx - lbl.get_width() // 2,
+                          btn.centery - lbl.get_height() // 2))
+
+        # Hint
+        hint = font_small.render("ENTER of SPACE om te starten  •  ESC om terug te gaan",
+                                 True, (90, 98, 125))
+        screen.blit(hint, (cx - hint.get_width() // 2, SCREEN_HEIGHT - 18))
+
+        pygame.display.flip()
+
+
 # ── Hoofd startscherm ─────────────────────────────────────────────────────────
 
 def show_start_screen(screen: pygame.Surface, clock: pygame.time.Clock) -> bool:

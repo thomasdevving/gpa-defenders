@@ -7,7 +7,7 @@ Start het spel door dit bestand te runnen:
 import math
 import pygame
 import sys
-from src.ui.screens import show_start_screen, show_pause_menu
+from src.ui.screens import show_start_screen, show_pause_menu, show_tutorial_screen
 from src.settings import (
     SCREEN_WIDTH, SCREEN_HEIGHT, FPS, TITLE,
     TILE_SIZE, GRID_COLS, GRID_ROWS,
@@ -530,5 +530,6 @@ if __name__ == "__main__":
     clock = pygame.time.Clock()
 
     if show_start_screen(screen, clock):
-        game = Game(screen=screen, clock=clock)
-        game.run()
+        if show_tutorial_screen(screen, clock):
+            game = Game(screen=screen, clock=clock)
+            game.run()

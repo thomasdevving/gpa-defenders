@@ -87,29 +87,37 @@ TOWER_TYPES = {
 
 # Enemy definities: (naam, hp, snelheid, gpa_schade, rewards, kleur)
 ENEMY_TYPES = {
-    "opdracht": {
-        "name": "Opdracht",
+    "quiz": {
+        "name": "Quiz",
         "hp": 10,
         "speed": 60,
         "gpa_damage": 0.1,
         "rewards": {"energy": 3 * ECONOMY_SCALE},
         "color": WHITE,
     },
-    "deadline": {
-        "name": "Deadline",
+    "huiswerk": {
+        "name": "Huiswerk",
         "hp": 8,
         "speed": 120,
         "gpa_damage": 0.2,
         "rewards": {"energy": 5 * ECONOMY_SCALE},
         "color": RED,
     },
-    "tentamen": {
-        "name": "Tentamen",
+    "midterm": {
+        "name": "Midterm",
         "hp": 40,
         "speed": 35,
         "gpa_damage": 0.5,
         "rewards": {"energy": 10 * ECONOMY_SCALE},
         "color": ORANGE,
+    },
+    "endterm": {
+        "name": "Endterm",
+        "hp": 65,
+        "speed": 30,
+        "gpa_damage": 0.8,
+        "rewards": {"energy": 14 * ECONOMY_SCALE},
+        "color": (200, 110, 60),
     },
     "professor": {
         "name": "Professor",

@@ -1,6 +1,6 @@
 """Wave management voor GPA Defenders."""
 
-from src.entities.enemy import Enemy, Opdracht, Deadline, Tentamen, Professor
+from src.entities.enemy import Enemy, Quiz, Huiswerk, Midterm, Endterm, Professor
 
 
 class WaveManager:
@@ -15,6 +15,7 @@ class WaveManager:
         """Start een nieuwe wave en retourneer de vijanden."""
         self.wave += 1
         self.wave_active = True
+        endterm_only_wave = self.wave >= 5 and self.wave % 3 == 0
 
         spawned: list[Enemy] = []
 
@@ -26,26 +27,35 @@ class WaveManager:
             ] + self.waypoints[:]
 
             if self.wave < 3:
-                spawned.append(Opdracht(delayed_waypoints))
+                spawned.append(Quiz(delayed_waypoints))
             elif self.wave < 5:
                 if i % 3 == 0:
-                    spawned.append(Deadline(delayed_waypoints))
+                    spawned.append(Huiswerk(delayed_waypoints))
                 else:
-                    spawned.append(Opdracht(delayed_waypoints))
+                    spawned.append(Quiz(delayed_waypoints))
             elif self.wave < 8:
-                if i % 5 == 0:
-                    spawned.append(Tentamen(delayed_waypoints))
+                # Sommige waves zijn "Endterm-only" (geen Midterms).
+                if endterm_only_wave and i % 5 == 0:
+                    spawned.append(Endterm(delayed_waypoints))
+                elif i % 7 == 0:
+                    spawned.append(Endterm(delayed_waypoints))
+                elif i % 5 == 0:
+                    spawned.append(Midterm(delayed_waypoints))
                 elif i % 3 == 0:
-                    spawned.append(Deadline(delayed_waypoints))
+                    spawned.append(Huiswerk(delayed_waypoints))
                 else:
-                    spawned.append(Opdracht(delayed_waypoints))
+                    spawned.append(Quiz(delayed_waypoints))
             else:
                 if i == 0:
                     spawned.append(Professor(delayed_waypoints))
+                elif endterm_only_wave and i % 4 == 0:
+                    spawned.append(Endterm(delayed_waypoints))
+                elif i % 6 == 0:
+                    spawned.append(Endterm(delayed_waypoints))
                 elif i % 4 == 0:
-                    spawned.append(Tentamen(delayed_waypoints))
+                    spawned.append(Midterm(delayed_waypoints))
                 else:
-                    spawned.append(Deadline(delayed_waypoints))
+                    spawned.append(Huiswerk(delayed_waypoints))
 
         return spawned
 

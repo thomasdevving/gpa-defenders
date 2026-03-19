@@ -1001,7 +1001,7 @@ def show_tutorial_screen(screen: pygame.Surface, clock: pygame.time.Clock) -> bo
             "kleur": (100, 200, 100),
             "regels": [
                 "Klik op een groene grastegel om een toren te plaatsen.",
-                "Je betaalt met ECTS, verdiend door vijanden te verslaan.",
+                "Je betaalt met Energy, verdiend door vijanden te verslaan.",
                 "Selecteer een toren via de kaarten onderaan of toets 1 t/m 4.",
                 "Je kunt geen torens op het pad plaatsen.",
             ],
@@ -1010,9 +1010,9 @@ def show_tutorial_screen(screen: pygame.Surface, clock: pygame.time.Clock) -> bo
             "titel": "Vijanden",
             "kleur": (255, 120, 80),
             "regels": [
-                "Opdracht: zwak, langzaam, weinig GPA-schade.",
-                "Deadline: snel en gevaarlijker.",
-                "Tentamen: veel HP, traag maar zware GPA-schade.",
+                "Quiz: zwak, langzaam, weinig GPA-schade.",
+                "Huiswerk: snel en gevaarlijker.",
+                "Midterm/Endterm: veel HP, traag maar zware GPA-schade.",
                 "Professor: eindbaas met enorm HP en maximale schade.",
             ],
         },

@@ -16,7 +16,7 @@ class Enemy(Entity):
     als ze het einde bereiken.
 
     Attributes:
-        enemy_type: Type vijand (opdracht, deadline, etc.).
+        enemy_type: Type vijand (quiz, huiswerk, etc.).
         hp: Huidige hitpoints.
         max_hp: Maximale hitpoints.
         speed: Basissnelheid in pixels per seconde.
@@ -129,24 +129,24 @@ class Enemy(Entity):
         pygame.draw.rect(screen, GREEN, (bar_x, bar_y, int(bar_width * hp_ratio), bar_height))
 
 
-class Opdracht(Enemy):
+class Quiz(Enemy):
     """Standaard vijand. Niets speciaals, maar komt in grote aantallen."""
 
     def __init__(self, waypoints: list[tuple[int, int]]):
-        super().__init__("opdracht", waypoints)
+        super().__init__("quiz", waypoints)
 
 
-class Deadline(Enemy):
+class Huiswerk(Enemy):
     """Snelle vijand die moeilijk te raken is.
 
-    Deadlines versnellen naarmate ze dichter bij het einde komen.
+    Huiswerk versnelt naarmate het dichter bij het einde komt.
     """
 
     def __init__(self, waypoints: list[tuple[int, int]]):
-        super().__init__("deadline", waypoints)
+        super().__init__("huiswerk", waypoints)
 
     def update(self, dt: float) -> None:
-        """Deadlines worden sneller naarmate ze het einde naderen."""
+        """Huiswerk wordt sneller naarmate het einde nadert."""
         super().update(dt)
         if self.alive and not self.reached_end and self.slow_timer <= 0:
             # Hoe dichter bij het einde, hoe sneller
@@ -154,14 +154,14 @@ class Deadline(Enemy):
             self.current_speed = self.speed * (1.0 + progress * 0.5)
 
 
-class Tentamen(Enemy):
+class Midterm(Enemy):
     """Trage maar sterke vijand met veel HP.
 
-    Tentamens hebben een schild dat eerst doorbroken moet worden.
+    Midterms hebben een schild dat eerst doorbroken moet worden.
     """
 
     def __init__(self, waypoints: list[tuple[int, int]]):
-        super().__init__("tentamen", waypoints)
+        super().__init__("midterm", waypoints)
         self.shield = self.max_hp * 0.3  # 30% extra schild
 
     def take_damage(self, damage: float) -> None:
@@ -176,7 +176,7 @@ class Tentamen(Enemy):
             super().take_damage(damage)
 
     def draw(self, screen: pygame.Surface) -> None:
-        """Teken tentamen met een schildindicator."""
+        """Teken midterm met een schildindicator."""
         super().draw(screen)
         if self.alive and self.shield > 0:
             # Teken schild ring
@@ -184,6 +184,34 @@ class Tentamen(Enemy):
                 screen, (100, 150, 255),
                 (int(self.x), int(self.y)),
                 self.radius + 4, 2
+            )
+
+
+class Endterm(Enemy):
+    """Zware variant van de Midterm met meer HP en sterker schild."""
+
+    def __init__(self, waypoints: list[tuple[int, int]]):
+        super().__init__("endterm", waypoints)
+        self.shield = self.max_hp * 0.45  # 45% extra schild
+
+    def take_damage(self, damage: float) -> None:
+        """Schild absorbeert eerst de schade."""
+        if self.shield > 0:
+            self.shield -= damage
+            if self.shield < 0:
+                super().take_damage(-self.shield)
+                self.shield = 0
+        else:
+            super().take_damage(damage)
+
+    def draw(self, screen: pygame.Surface) -> None:
+        """Teken endterm met zwaardere schild-visual."""
+        super().draw(screen)
+        if self.alive and self.shield > 0:
+            pygame.draw.circle(
+                screen, (180, 120, 255),
+                (int(self.x), int(self.y)),
+                self.radius + 5, 3
             )
 
 

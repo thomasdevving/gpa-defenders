@@ -17,10 +17,26 @@ class GameManager:
         self.gpa = STARTING_GPA
         self.ects = STARTING_ECTS
         self.game_over = False
+        self.allowed_speeds = (1.0, 2.0, 4.0)
+        self.speed_multiplier = 1.0
 
         self.towers: list = []
         self.enemies: list = []
         self.projectiles: list = []
+
+    def set_speed(self, multiplier: float) -> None:
+        """Zet de gamesnelheid op 1x, 2x of 4x."""
+        if multiplier not in self.allowed_speeds:
+            raise ValueError(
+                f"Ongeldige snelheid: {multiplier}. Toegestaan: {self.allowed_speeds}"
+            )
+        self.speed_multiplier = multiplier
+
+    def cycle_speed(self) -> float:
+        """Cycle door 1x -> 2x -> 4x -> 1x en return de nieuwe waarde."""
+        idx = self.allowed_speeds.index(self.speed_multiplier)
+        self.speed_multiplier = self.allowed_speeds[(idx + 1) % len(self.allowed_speeds)]
+        return self.speed_multiplier
 
     def can_afford_tower(self, tower_type: str) -> bool:
         """Check of de speler genoeg ECTS heeft voor een toren."""
@@ -46,10 +62,11 @@ class GameManager:
         """Update combat, rewards, wave status en fail condition."""
         if self.game_over:
             return
+        scaled_dt = dt * self.speed_multiplier
 
         # Update torens en maak projectielen
         for tower in self.towers:
-            result = tower.update(dt, self.enemies)
+            result = tower.update(scaled_dt, self.enemies)
             if result:
                 proj = Projectile(
                     result["x"], result["y"], result["target"],
@@ -60,7 +77,7 @@ class GameManager:
 
         # Update vijanden
         for enemy in self.enemies:
-            enemy.update(dt)
+            enemy.update(scaled_dt)
             if enemy.reached_end:
                 self.gpa -= enemy.gpa_damage
                 enemy.alive = False
@@ -69,7 +86,7 @@ class GameManager:
 
         # Update projectielen
         for proj in self.projectiles:
-            proj.update(dt)
+            proj.update(scaled_dt)
 
         # Verwijder dode objecten
         self.enemies = [e for e in self.enemies if e.alive]

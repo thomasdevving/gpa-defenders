@@ -562,23 +562,25 @@ def show_game_over_screen(screen: pygame.Surface, clock: pygame.time.Clock,
 
 # ── Pauzemenu ─────────────────────────────────────────────────────────────────
 
-def show_pause_menu(screen: pygame.Surface, clock: pygame.time.Clock) -> bool:
+def show_pause_menu(screen: pygame.Surface, clock: pygame.time.Clock) -> str:
     """Toon het pauzemenu over het huidige spelscherm.
 
     Returns:
-        True  → doorgaan.
-        False → stoppen.
+        'continue' → doorgaan.
+        'menu'     → terug naar hoofdmenu.
+        'quit'     → afsluiten.
     """
     cx, cy = SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2
 
     font_title = pygame.font.SysFont(None, 62, bold=True)
-    font_btn   = pygame.font.SysFont(None, 36)
+    font_btn   = pygame.font.SysFont(None, 34)
 
-    bw, bh = 280, 60
-    btn_continue = pygame.Rect(cx - bw // 2, cy - 10,      bw, bh)
-    btn_quit     = pygame.Rect(cx - bw // 2, cy + bh + 16, bw, bh)
+    bw, bh = 280, 56
+    gap = 12
+    btn_continue = pygame.Rect(cx - bw // 2, cy - 10,                  bw, bh)
+    btn_menu     = pygame.Rect(cx - bw // 2, cy - 10 + (bh + gap),     bw, bh)
+    btn_quit     = pygame.Rect(cx - bw // 2, cy - 10 + (bh + gap) * 2, bw, bh)
 
-    # Vries het huidige scherm in als achtergrond
     frozen = screen.copy()
 
     while True:
@@ -587,53 +589,51 @@ def show_pause_menu(screen: pygame.Surface, clock: pygame.time.Clock) -> bool:
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                return False
+                return 'quit'
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    return True          # ESC nogmaals = doorgaan
+                    return 'continue'
                 if event.key == pygame.K_RETURN:
-                    return True
+                    return 'continue'
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if btn_continue.collidepoint(mx, my):
-                    return True
+                    return 'continue'
+                if btn_menu.collidepoint(mx, my):
+                    return 'menu'
                 if btn_quit.collidepoint(mx, my):
-                    return False
+                    return 'quit'
 
-        # Bevroren spelscherm als achtergrond
         screen.blit(frozen, (0, 0))
 
-        # Semi-transparante overlay
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 165))
         screen.blit(overlay, (0, 0))
 
-        # Paneel
-        panel = pygame.Rect(cx - 175, cy - 90, 350, 260)
+        # Paneel (groter voor drie knoppen)
+        panel = pygame.Rect(cx - 185, cy - 105, 370, 310)
         pygame.draw.rect(screen, (38, 35, 30), panel, border_radius=12)
         pygame.draw.rect(screen, (100, 90, 75), panel, 3, border_radius=12)
 
-        # Titel
-        _outlined(screen, font_title, "GEPAUZEERD", cx, cy - 80, WHITE, (20, 15, 10), thick=2)
+        _outlined(screen, font_title, "GEPAUZEERD", cx, cy - 95, WHITE, (20, 15, 10), thick=2)
 
-        # Knoppen
-        for rect, label, is_quit in [
-            (btn_continue, "Doorgaan",  False),
-            (btn_quit,     "Stoppen",   True),
+        for rect, label, stijl in [
+            (btn_continue, "Doorgaan",        'groen'),
+            (btn_menu,     "Terug naar menu", 'blauw'),
+            (btn_quit,     "Stoppen",         'rood'),
         ]:
             hovered = rect.collidepoint(mx, my)
-            if is_quit:
-                bg     = (175, 45, 45) if hovered else (130, 30, 30)
-                border = (220, 80, 80)
+            if stijl == 'groen':
+                bg, border = ((55, 110, 55) if hovered else (38, 82, 38)), (90, 170, 90)
+            elif stijl == 'blauw':
+                bg, border = ((45, 85, 145) if hovered else (30, 60, 110)), (80, 130, 210)
             else:
-                bg     = (55, 110, 55) if hovered else (38, 82, 38)
-                border = (90, 170, 90)
+                bg, border = ((175, 45, 45) if hovered else (130, 30, 30)), (220, 80, 80)
             pygame.draw.rect(screen, bg,     rect, border_radius=8)
             pygame.draw.rect(screen, border, rect, 2, border_radius=8)
             lbl = font_btn.render(label, True, WHITE)
             screen.blit(lbl, (rect.centerx - lbl.get_width() // 2,
                                rect.centery - lbl.get_height() // 2))
 
-        # Hint
         hint_font = pygame.font.SysFont(None, 22)
         hint = hint_font.render("ESC of ENTER om door te gaan", True, (140, 130, 115))
         screen.blit(hint, (cx - hint.get_width() // 2, btn_quit.bottom + 14))

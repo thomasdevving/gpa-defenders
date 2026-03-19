@@ -227,9 +227,11 @@ class Game:
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    if not show_pause_menu(self.screen, self.clock):
+                    result = show_pause_menu(self.screen, self.clock)
+                    if result == 'quit':
                         return False
-                    return True
+                    if result == 'menu':
+                        return 'menu'
                 if event.key == pygame.K_SPACE and not self.wave_manager.wave_active:
                     self.game_manager.add_enemies(self.wave_manager.spawn_wave())
 
@@ -240,8 +242,11 @@ class Game:
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if self.pause_btn.collidepoint(event.pos):
-                    if not show_pause_menu(self.screen, self.clock):
+                    result = show_pause_menu(self.screen, self.clock)
+                    if result == 'quit':
                         return False
+                    if result == 'menu':
+                        return 'menu'
                 else:
                     self._handle_click(event.pos)
 
@@ -353,29 +358,33 @@ class Game:
         # Toren selectiekaarten
         self._draw_tower_cards(ui_y)
 
-    def run(self) -> bool:
+    def run(self) -> str:
         """Start de game loop.
 
         Returns:
-            True  → speler wil opnieuw spelen.
-            False → speler wil afsluiten.
+            'restart' → opnieuw spelen.
+            'menu'    → terug naar hoofdmenu.
+            'quit'    → afsluiten.
         """
         while True:
             dt = self.clock.tick(FPS) / 1000.0
 
-            if not self.handle_events():
-                return False
+            result = self.handle_events()
+            if result is False:
+                return 'quit'
+            if result == 'menu':
+                return 'menu'
 
             self.update(dt)
             self.draw()
 
             if self.game_manager.game_over:
                 pygame.display.flip()
-                return show_game_over_screen(
+                return 'restart' if show_game_over_screen(
                     self.screen, self.clock,
                     self.wave_manager.wave,
                     self.game_manager.gpa,
-                )
+                ) else 'quit'
 
 
 if __name__ == "__main__":
@@ -384,9 +393,14 @@ if __name__ == "__main__":
     pygame.display.set_caption(TITLE)
     clock = pygame.time.Clock()
 
-    if show_start_screen(screen, clock):
-        if show_tutorial_screen(screen, clock):
-            while True:
-                game = Game(screen=screen, clock=clock)
-                if not game.run():
-                    break
+    while show_start_screen(screen, clock):
+        if not show_tutorial_screen(screen, clock):
+            break
+        while True:
+            game = Game(screen=screen, clock=clock)
+            result = game.run()
+            if result == 'quit':
+                exit()
+            if result == 'menu':
+                break  # terug naar startscherm
+            # 'restart' → nieuwe game in de inner loop

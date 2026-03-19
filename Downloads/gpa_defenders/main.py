@@ -6,8 +6,10 @@ Start het spel door dit bestand te runnen:
 
 import math
 import pygame
+from src.network.client import NetworkClient
 from src.ui.screens import (show_start_screen, show_pause_menu, show_tutorial_screen,
-                            show_game_over_screen, show_mode_select_screen)
+                            show_game_over_screen, show_mode_select_screen,
+                            show_network_lobby_screen)
 from src.settings import (
     SCREEN_WIDTH, SCREEN_HEIGHT, FPS, TITLE,
     TILE_SIZE, GRID_COLS, GRID_ROWS,
@@ -32,7 +34,9 @@ class Game:
     """
 
     def __init__(self, screen: pygame.Surface = None, clock: pygame.time.Clock = None,
-                 multiplayer: bool = False):
+                 multiplayer: bool = False,
+                 network_client: "NetworkClient | None" = None,
+                 is_host: bool = False):
         if not pygame.get_init():
             pygame.init()
         if screen is None:
@@ -53,9 +57,14 @@ class Game:
         self.pause_btn = pygame.Rect(8, 8, 38, 38)
         self._setup_tower_cards()
 
+        # Netwerk (online multiplayer)
+        self.net: NetworkClient | None = network_client
+        self.is_host = is_host
+
         # Speler 2
-        self.multiplayer = multiplayer
-        if multiplayer:
+        self.multiplayer = multiplayer or (network_client is not None)
+        if self.multiplayer and network_client is None:
+            # Lokale co-op cursor
             self.p2_gx = GRID_COLS // 2
             self.p2_gy = GRID_ROWS // 2
             self.p2_tower_type = "coffee"
@@ -243,14 +252,16 @@ class Game:
                         return 'menu'
                 if event.key == pygame.K_SPACE and not self.wave_manager.wave_active:
                     self.game_manager.add_enemies(self.wave_manager.spawn_wave())
+                    if self.net:
+                        self.net.send({"type": "START_WAVE"})
 
                 # P1: toren selectie met cijfertoetsen
                 for i, tower_type in enumerate(self.tower_types_list):
                     if event.key == pygame.K_1 + i:
                         self.selected_tower_type = tower_type
 
-                # P2: cursor en torenselectie
-                if self.multiplayer:
+                # P2: cursor en torenselectie (alleen lokale co-op)
+                if self.multiplayer and self.net is None:
                     if event.key == pygame.K_UP:
                         self.p2_gy = max(0, self.p2_gy - 1)
                     elif event.key == pygame.K_DOWN:
@@ -308,6 +319,15 @@ class Game:
         # Markeer de cel als bezet op de map
         self.grid_map.place_tower(grid_x, grid_y)
 
+        # Stuur plaatsing door naar tegenstander
+        if self.net:
+            self.net.send({
+                "type": "PLACE_TOWER",
+                "tower_type": self.selected_tower_type,
+                "gx": grid_x,
+                "gy": grid_y,
+            })
+
     def _p2_place_tower(self) -> None:
         """Speler 2 plaatst een toren op de cursorpositie."""
         if not self.grid_map.can_place_tower(self.p2_gx, self.p2_gy):
@@ -315,6 +335,37 @@ class Game:
         if not self.game_manager.place_tower(self.p2_tower_type, self.p2_gx, self.p2_gy):
             return
         self.grid_map.place_tower(self.p2_gx, self.p2_gy)
+
+    def _poll_network(self) -> None:
+        """Verwerk inkomende berichten van de tegenstander."""
+        while True:
+            msg = self.net.poll()
+            if msg is None:
+                break
+            t = msg.get("type")
+            if t == "PLACE_TOWER":
+                gx, gy = msg["gx"], msg["gy"]
+                tt = msg["tower_type"]
+                if self.grid_map.can_place_tower(gx, gy):
+                    self.game_manager.place_tower(tt, gx, gy)
+                    self.grid_map.place_tower(gx, gy)
+            elif t == "START_WAVE" and not self.wave_manager.wave_active:
+                self.game_manager.add_enemies(self.wave_manager.spawn_wave())
+            elif t == "STATE_SYNC":
+                # Host stuurt authoritative GPA/energy; gast accepteert deze
+                if not self.is_host:
+                    self.game_manager.gpa = msg.get("gpa", self.game_manager.gpa)
+                    self.game_manager.energy = msg.get("energy", self.game_manager.energy)
+            elif t == "PLAYER_LEFT":
+                # Tegenstander is weggegaan
+                font = pygame.font.SysFont(None, 48)
+                surf = font.render("Tegenstander verliet het spel", True, (255, 80, 80))
+                self.screen.blit(surf, (SCREEN_WIDTH // 2 - surf.get_width() // 2,
+                                        SCREEN_HEIGHT // 2 - surf.get_height() // 2))
+                pygame.display.flip()
+                pygame.time.wait(2500)
+                self.net.disconnect()
+                self.net = None
 
     def _draw_p2_cursor(self) -> None:
         """Teken de cursor van speler 2 op het grid."""
@@ -363,7 +414,7 @@ class Game:
         for proj in self.game_manager.projectiles:
             proj.draw(self.screen)
 
-        if self.multiplayer:
+        if self.multiplayer and self.net is None:
             self._draw_p2_cursor()
 
         # Teken UI
@@ -409,8 +460,8 @@ class Game:
             hint = self.small_font.render("[SPACE] Volgende wave", True, GRAY)
             self.screen.blit(hint, (180, ui_y + 40))
 
-        # P2 indicator
-        if self.multiplayer:
+        # P2 indicator (alleen lokale co-op)
+        if self.multiplayer and self.net is None:
             p2_color = (80, 200, 255)
             p2_name = TOWER_TYPES[self.p2_tower_type]["name"]
             p2_lbl = self.small_font.render("P2:", True, p2_color)
@@ -419,6 +470,11 @@ class Game:
             self.screen.blit(p2_val, (20 + p2_lbl.get_width() + 5, ui_y + 68))
             hint2 = self.small_font.render("Pijltjes + Numpad 0", True, GRAY)
             self.screen.blit(hint2, (20, ui_y + 88))
+        elif self.net is not None:
+            net_color = (80, 255, 160)
+            role = "Host" if self.is_host else "Gast"
+            net_lbl = self.small_font.render(f"Online ({role})", True, net_color)
+            self.screen.blit(net_lbl, (20, ui_y + 68))
 
         # Toren selectiekaarten
         self._draw_tower_cards(ui_y)
@@ -431,14 +487,28 @@ class Game:
             'menu'    → terug naar hoofdmenu.
             'quit'    → afsluiten.
         """
+        sync_timer = 0.0
         while True:
             dt = self.clock.tick(FPS) / 1000.0
+            sync_timer += dt
 
             result = self.handle_events()
             if result is False:
                 return 'quit'
             if result == 'menu':
                 return 'menu'
+
+            # Verwerk inkomende netwerkberichten
+            if self.net:
+                self._poll_network()
+                # Host stuurt elke seconde een STATE_SYNC
+                if self.is_host and sync_timer >= 1.0:
+                    sync_timer = 0.0
+                    self.net.send({
+                        "type": "STATE_SYNC",
+                        "gpa": self.game_manager.gpa,
+                        "energy": self.game_manager.energy,
+                    })
 
             self.update(dt)
             self.draw()
@@ -464,12 +534,32 @@ if __name__ == "__main__":
         mode = show_mode_select_screen(screen, clock)
         if mode == 'back':
             continue
+
+        if mode == 'online':
+            lobby_result = show_network_lobby_screen(screen, clock)
+            if lobby_result is None:
+                continue  # gebruiker annuleerde lobby
+            net_client, is_host = lobby_result
+        else:
+            net_client, is_host = None, False
+
         multiplayer = (mode == 'multi')
+
         while True:
-            game = Game(screen=screen, clock=clock, multiplayer=multiplayer)
+            game = Game(
+                screen=screen,
+                clock=clock,
+                multiplayer=multiplayer,
+                network_client=net_client,
+                is_host=is_host,
+            )
             result = game.run()
+            if net_client:
+                net_client.disconnect()
             if result == 'quit':
                 exit()
             if result == 'menu':
                 break  # terug naar startscherm
-            # 'restart' → nieuwe game in de inner loop
+            # 'restart' → nieuwe game in de inner loop (online: opnieuw verbinden is nodig)
+            if mode == 'online':
+                break  # bij online opnieuw verbinden via lobby

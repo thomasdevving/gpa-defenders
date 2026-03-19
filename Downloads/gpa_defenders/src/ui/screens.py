@@ -643,43 +643,107 @@ def show_pause_menu(screen: pygame.Surface, clock: pygame.time.Clock) -> str:
 
 # ── Modusselectiescherm ───────────────────────────────────────────────────────
 
+def _draw_mode_bg(screen: pygame.Surface, font_title: pygame.font.Font,
+                  cx: int, font_small: pygame.font.Font) -> None:
+    screen.fill((22, 26, 38))
+    for gx in range(0, SCREEN_WIDTH, 48):
+        pygame.draw.line(screen, (30, 35, 50), (gx, 0), (gx, SCREEN_HEIGHT), 1)
+    for gy in range(0, SCREEN_HEIGHT, 48):
+        pygame.draw.line(screen, (30, 35, 50), (0, gy), (SCREEN_WIDTH, gy), 1)
+    _outlined(screen, font_title, "Hoe wil je spelen?",
+              cx, 38, WHITE, (10, 12, 22), thick=2)
+    pygame.draw.line(screen, (55, 62, 90), (40, 100), (SCREEN_WIDTH - 40, 100), 1)
+    hint = font_small.render("Klik op een kaart  |  ESC om terug te gaan",
+                             True, (70, 80, 110))
+    screen.blit(hint, (cx - hint.get_width() // 2, SCREEN_HEIGHT - 22))
+
+
+def _draw_mode_card(screen: pygame.Surface, card: pygame.Rect, titel: str,
+                    kleur: tuple, regels: list, badge: str,
+                    font_head: pygame.font.Font, font_body: pygame.font.Font,
+                    font_small: pygame.font.Font, hov: bool) -> None:
+    bg = (38, 46, 66) if hov else (28, 34, 50)
+    bc = kleur if hov else (52, 62, 92)
+    pygame.draw.rect(screen, bg, card, border_radius=12)
+    pygame.draw.rect(screen, kleur, (card.x, card.y, card.width, 6), border_radius=4)
+    pygame.draw.rect(screen, bc, card, 2, border_radius=12)
+
+    th = font_head.render(titel, True, kleur)
+    screen.blit(th, (card.centerx - th.get_width() // 2, card.y + 18))
+
+    bf = font_small.render(badge, True, (22, 26, 38))
+    bpad = 8
+    br = pygame.Rect(card.right - bf.get_width() - bpad * 2 - 8,
+                     card.y + 16, bf.get_width() + bpad * 2, 20)
+    pygame.draw.rect(screen, kleur, br, border_radius=4)
+    screen.blit(bf, (br.x + bpad, br.y + 2))
+
+    for i, regel in enumerate(regels):
+        if not regel:
+            continue
+        col = kleur if regel.endswith(":") else (
+            (155, 165, 185) if any(c in regel for c in (":", "Pijl", "Numpad", "Muis"))
+            else (188, 196, 218))
+        rs = font_body.render(regel, True, col)
+        screen.blit(rs, (card.x + 20, card.y + 58 + i * 30))
+
+
 def show_mode_select_screen(screen: pygame.Surface, clock: pygame.time.Clock) -> str:
-    """Toon het scherm om singleplayer of local co-op te kiezen.
+    """Toon het scherm om singleplayer, local co-op of online te kiezen.
 
     Returns:
         'single' → singleplayer.
         'multi'  → local co-op.
+        'online' → online co-op (ga naar lobby).
         'back'   → terug naar startscherm.
     """
     cx = SCREEN_WIDTH // 2
 
     font_title = pygame.font.SysFont(None, 56, bold=True)
-    font_head  = pygame.font.SysFont(None, 32, bold=True)
-    font_body  = pygame.font.SysFont(None, 23)
+    font_head  = pygame.font.SysFont(None, 30, bold=True)
+    font_body  = pygame.font.SysFont(None, 22)
     font_small = pygame.font.SysFont(None, 21)
 
-    card_w, card_h = 390, 350
-    card_y = 115
-    card_single = pygame.Rect(cx - 20 - card_w, card_y, card_w, card_h)
-    card_multi  = pygame.Rect(cx + 20,           card_y, card_w, card_h)
-
-    single_info = [
-        "Speel alleen.",
-        "",
-        "Muis: toren plaatsen",
-        "1 / 2 / 3 / 4: toren selecteren",
-        "SPACE: volgende wave starten",
-        "ESC: pauze",
+    # 3 kaarten naast elkaar
+    card_w, card_h, gap = 290, 360, 18
+    total = 3 * card_w + 2 * gap
+    x0 = cx - total // 2
+    card_y = 108
+    cards = [
+        pygame.Rect(x0,                   card_y, card_w, card_h),
+        pygame.Rect(x0 + card_w + gap,    card_y, card_w, card_h),
+        pygame.Rect(x0 + (card_w + gap)*2, card_y, card_w, card_h),
     ]
-    multi_info = [
-        "Speel samen op hetzelfde scherm.",
-        "",
-        "Speler 1: muis (bestaande besturing)",
-        "",
-        "Speler 2:",
-        "Pijltjestoetsen: cursor bewegen",
-        "Numpad 1-4: toren selecteren",
-        "Numpad 0: toren plaatsen",
+
+    defs = [
+        ("Singleplayer", (255, 210, 60), "1 speler", 'single', [
+            "Speel alleen.",
+            "",
+            "Muis: toren plaatsen",
+            "1-4: toren selecteren",
+            "SPACE: volgende wave",
+            "ESC: pauze",
+        ]),
+        ("Local Co-op", (80, 200, 255), "2 spelers", 'multi', [
+            "Samen op 1 scherm.",
+            "",
+            "Speler 1: muis",
+            "",
+            "Speler 2:",
+            "Pijltjes: cursor",
+            "Numpad 1-4: toren",
+            "Numpad 0: plaatsen",
+        ]),
+        ("Online Co-op", (100, 220, 120), "via netwerk", 'online', [
+            "Samen via internet",
+            "of lokaal netwerk.",
+            "",
+            "Host: start server,",
+            "deel je IP-adres.",
+            "",
+            "Join: voer het IP",
+            "van de host in.",
+        ]),
     ]
 
     while True:
@@ -689,67 +753,217 @@ def show_mode_select_screen(screen: pygame.Surface, clock: pygame.time.Clock) ->
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return 'back'
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                return 'back'
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                for card, (_, _, _, result, _) in zip(cards, defs):
+                    if card.collidepoint(mx, my):
+                        return result
+
+        _draw_mode_bg(screen, font_title, cx, font_small)
+        for card, (titel, kleur, badge, _, regels) in zip(cards, defs):
+            _draw_mode_card(screen, card, titel, kleur, regels, badge,
+                            font_head, font_body, font_small,
+                            card.collidepoint(mx, my))
+        pygame.display.flip()
+
+
+# ── Online lobby ──────────────────────────────────────────────────────────────
+
+def show_network_lobby_screen(screen: pygame.Surface,
+                              clock: pygame.time.Clock):
+    """Lobby-scherm: kies Host of Join en maak verbinding.
+
+    Returns:
+        (NetworkClient, is_host: bool) bij succes.
+        None bij annuleren.
+    """
+    from src.network.client import NetworkClient
+    from src.network.server import GameServer, get_local_ip
+
+    cx = SCREEN_WIDTH // 2
+
+    font_title = pygame.font.SysFont(None, 52, bold=True)
+    font_head  = pygame.font.SysFont(None, 32, bold=True)
+    font_body  = pygame.font.SysFont(None, 26)
+    font_small = pygame.font.SysFont(None, 22)
+    font_mono  = pygame.font.SysFont("monospace", 26)
+
+    bw, bh = 220, 52
+    btn_host = pygame.Rect(cx - bw - 16, 190, bw, bh)
+    btn_join = pygame.Rect(cx + 16,      190, bw, bh)
+    btn_back = pygame.Rect(cx - 90,      SCREEN_HEIGHT - 68, 180, 44)
+
+    # Toestand
+    mode      = None      # 'host' of 'join'
+    status    = ""
+    error     = ""
+    ip_input  = ""        # tekstveld voor join-IP
+    server    = None
+    client    = None
+    waiting   = False
+
+    local_ip = get_local_ip()
+
+    while True:
+        clock.tick(60)
+        mx, my = pygame.mouse.get_pos()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                if server:
+                    server.stop()
+                if client:
+                    client.disconnect()
+                return None
+
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    return 'back'
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if card_single.collidepoint(mx, my):
-                    return 'single'
-                if card_multi.collidepoint(mx, my):
-                    return 'multi'
+                    if server:
+                        server.stop()
+                    if client:
+                        client.disconnect()
+                    return None
 
-        # Achtergrond
+                # Tekstveld voor IP-invoer
+                if mode == 'join' and not waiting:
+                    if event.key == pygame.K_BACKSPACE:
+                        ip_input = ip_input[:-1]
+                    elif event.key == pygame.K_RETURN and ip_input:
+                        # Verbinden
+                        client = NetworkClient()
+                        status = f"Verbinden met {ip_input}..."
+                        error  = ""
+                        waiting = True
+                        if client.connect(ip_input):
+                            status = "Verbonden! Wachten op host..."
+                        else:
+                            error   = "Verbinding mislukt. Controleer het IP."
+                            status  = ""
+                            client  = None
+                            waiting = False
+                    elif len(ip_input) < 15:
+                        ch = event.unicode
+                        if ch in "0123456789.":
+                            ip_input += ch
+
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if btn_back.collidepoint(mx, my):
+                    if server:
+                        server.stop()
+                    if client:
+                        client.disconnect()
+                    return None
+
+                if mode is None:
+                    if btn_host.collidepoint(mx, my):
+                        mode   = 'host'
+                        server = GameServer()
+                        server.start()
+                        client = NetworkClient()
+                        client.connect("127.0.0.1")
+                        status = f"Server gestart  |  Jouw IP: {local_ip}"
+                        waiting = True
+                    elif btn_join.collidepoint(mx, my):
+                        mode   = 'join'
+                        status = "Voer het IP-adres van de host in:"
+
+        # Poll client op GAME_START
+        if client and client.connected:
+            msg = client.poll()
+            if msg and msg["type"] == "GAME_START":
+                is_host = (mode == 'host')
+                return client, is_host
+
+        # ── Tekenen ──────────────────────────────────────────────────────────
         screen.fill((22, 26, 38))
         for gx in range(0, SCREEN_WIDTH, 48):
             pygame.draw.line(screen, (30, 35, 50), (gx, 0), (gx, SCREEN_HEIGHT), 1)
         for gy in range(0, SCREEN_HEIGHT, 48):
             pygame.draw.line(screen, (30, 35, 50), (0, gy), (SCREEN_WIDTH, gy), 1)
 
-        _outlined(screen, font_title, "Hoe wil je spelen?",
+        _outlined(screen, font_title, "Online Co-op",
                   cx, 38, WHITE, (10, 12, 22), thick=2)
-        pygame.draw.line(screen, (55, 62, 90),
-                         (40, 100), (SCREEN_WIDTH - 40, 100), 1)
+        pygame.draw.line(screen, (55, 62, 90), (40, 100), (SCREEN_WIDTH - 40, 100), 1)
 
-        for card, titel, kleur, regels, badge in [
-            (card_single, "Singleplayer",  (255, 210, 60),  single_info, "1 speler"),
-            (card_multi,  "Local Co-op",   (80,  200, 255), multi_info,  "2 spelers"),
-        ]:
-            hov = card.collidepoint(mx, my)
-            bg  = (38, 46, 66) if hov else (28, 34, 50)
-            bc  = kleur if hov else (52, 62, 92)
+        if mode is None:
+            # Host / Join knoppen
+            sub = font_body.render("Kies hoe je wilt verbinden:", True, (160, 170, 195))
+            screen.blit(sub, (cx - sub.get_width() // 2, 148))
 
-            pygame.draw.rect(screen, bg, card, border_radius=12)
-            # Gekleurde bovenbalk
-            pygame.draw.rect(screen, kleur,
-                             (card.x, card.y, card.width, 6), border_radius=4)
-            pygame.draw.rect(screen, bc, card, 2, border_radius=12)
+            for btn, label, kleur in [
+                (btn_host, "Host game",  (100, 220, 120)),
+                (btn_join, "Join game",  (80,  190, 255)),
+            ]:
+                hov = btn.collidepoint(mx, my)
+                bg  = tuple(min(255, c + 25) for c in kleur) if hov else tuple(c // 2 for c in kleur)
+                pygame.draw.rect(screen, bg,    btn, border_radius=8)
+                pygame.draw.rect(screen, kleur, btn, 2, border_radius=8)
+                ls = font_head.render(label, True, WHITE)
+                screen.blit(ls, (btn.centerx - ls.get_width() // 2,
+                                 btn.centery - ls.get_height() // 2))
 
-            # Titel
-            th = font_head.render(titel, True, kleur)
-            screen.blit(th, (card.centerx - th.get_width() // 2, card.y + 18))
+            info = font_small.render(
+                "Host: start een server en deel je IP.   Join: voer IP van host in.",
+                True, (90, 100, 130))
+            screen.blit(info, (cx - info.get_width() // 2, 270))
 
-            # Badge
-            bf = font_small.render(badge, True, (22, 26, 38))
-            bpad = 8
-            br = pygame.Rect(card.right - bf.get_width() - bpad * 2 - 8,
-                             card.y + 16, bf.get_width() + bpad * 2, 20)
-            pygame.draw.rect(screen, kleur, br, border_radius=4)
-            screen.blit(bf, (br.x + bpad, br.y + 2))
+        elif mode == 'host':
+            # Wachten op tweede speler
+            ts = font_head.render("Wachten op speler 2...", True, (100, 220, 120))
+            screen.blit(ts, (cx - ts.get_width() // 2, 165))
 
-            # Regels
-            for i, regel in enumerate(regels):
-                if regel == "":
-                    continue
-                is_sub = regel.startswith(" ") or regel[0].isupper() and ":" not in regel and i > 0
-                col = (188, 196, 218) if not regel.startswith("Speler") else kleur
-                if ":" in regel or regel.startswith("Pijl") or regel.startswith("Numpad") or regel.startswith("Muis") or regel.startswith("1 /") or regel.startswith("SPACE") or regel.startswith("ESC"):
-                    col = (155, 165, 185)
-                rs = font_body.render(regel, True, col)
-                screen.blit(rs, (card.x + 20, card.y + 58 + i * 30))
+            ip_lbl = font_body.render("Deel dit IP-adres met je medespeler:", True, (160, 170, 195))
+            screen.blit(ip_lbl, (cx - ip_lbl.get_width() // 2, 230))
 
-        hint = font_small.render("Klik op een kaart om te kiezen  |  ESC om terug te gaan",
-                                 True, (70, 80, 110))
-        screen.blit(hint, (cx - hint.get_width() // 2, SCREEN_HEIGHT - 22))
+            ip_box = pygame.Rect(cx - 160, 268, 320, 46)
+            pygame.draw.rect(screen, (35, 42, 60), ip_box, border_radius=8)
+            pygame.draw.rect(screen, (100, 220, 120), ip_box, 2, border_radius=8)
+            ip_s = font_mono.render(local_ip, True, (100, 220, 120))
+            screen.blit(ip_s, (ip_box.centerx - ip_s.get_width() // 2,
+                               ip_box.centery - ip_s.get_height() // 2))
+
+            port_s = font_small.render(f"Poort: 5555", True, (90, 100, 130))
+            screen.blit(port_s, (cx - port_s.get_width() // 2, 326))
+
+        elif mode == 'join':
+            ts = font_head.render("Verbinden met host", True, (80, 190, 255))
+            screen.blit(ts, (cx - ts.get_width() // 2, 165))
+
+            if not waiting:
+                lbl = font_body.render("IP-adres van de host:", True, (160, 170, 195))
+                screen.blit(lbl, (cx - lbl.get_width() // 2, 222))
+
+                inp_box = pygame.Rect(cx - 160, 256, 320, 46)
+                pygame.draw.rect(screen, (35, 42, 60), inp_box, border_radius=8)
+                pygame.draw.rect(screen, (80, 190, 255), inp_box, 2, border_radius=8)
+                disp = ip_input + ("|" if (pygame.time.get_ticks() // 500) % 2 == 0 else "")
+                ip_s = font_mono.render(disp or " ", True, WHITE)
+                screen.blit(ip_s, (inp_box.x + 12,
+                                   inp_box.centery - ip_s.get_height() // 2))
+
+                hint2 = font_small.render("ENTER om te verbinden", True, (90, 100, 130))
+                screen.blit(hint2, (cx - hint2.get_width() // 2, 314))
+            else:
+                ws = font_body.render("Verbonden! Wachten op host...", True, (80, 190, 255))
+                screen.blit(ws, (cx - ws.get_width() // 2, 256))
+
+        # Status / fout
+        if status:
+            ss = font_small.render(status, True, (130, 190, 130))
+            screen.blit(ss, (cx - ss.get_width() // 2, 380))
+        if error:
+            es = font_small.render(error, True, RED)
+            screen.blit(es, (cx - es.get_width() // 2, 380))
+
+        # Terug-knop
+        hov = btn_back.collidepoint(mx, my)
+        pygame.draw.rect(screen, (65, 35, 35) if hov else (45, 22, 22),
+                         btn_back, border_radius=8)
+        pygame.draw.rect(screen, (180, 60, 60), btn_back, 2, border_radius=8)
+        bl = font_body.render("Terug", True, WHITE)
+        screen.blit(bl, (btn_back.centerx - bl.get_width() // 2,
+                         btn_back.centery - bl.get_height() // 2))
 
         pygame.display.flip()
 

@@ -57,3 +57,12 @@ class GridMap:
             return False
         self.grid[grid_y][grid_x] = 2
         return True
+
+    def remove_tower(self, grid_x: int, grid_y: int) -> bool:
+        """Maak een torencel weer vrij."""
+        if not self.is_within_bounds(grid_x, grid_y):
+            return False
+        if self.grid[grid_y][grid_x] != 2:
+            return False
+        self.grid[grid_y][grid_x] = 0
+        return True

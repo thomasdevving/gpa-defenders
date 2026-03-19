@@ -7,6 +7,7 @@ from src.entities.tower import create_tower
 from src.settings import STARTING_GPA, STARTING_ECTS, FAILING_GPA, TOWER_TYPES
 
 if TYPE_CHECKING:
+    from src.managers.grid import GridMap
     from src.managers.wave_manager import WaveManager
 
 
@@ -17,10 +18,26 @@ class GameManager:
         self.gpa = STARTING_GPA
         self.ects = STARTING_ECTS
         self.game_over = False
+        self.allowed_speeds = (1.0, 2.0, 4.0)
+        self.speed_multiplier = 1.0
 
         self.towers: list = []
         self.enemies: list = []
         self.projectiles: list = []
+
+    def set_speed(self, multiplier: float) -> None:
+        """Zet de gamesnelheid op 1x, 2x of 4x."""
+        if multiplier not in self.allowed_speeds:
+            raise ValueError(
+                f"Ongeldige snelheid: {multiplier}. Toegestaan: {self.allowed_speeds}"
+            )
+        self.speed_multiplier = multiplier
+
+    def cycle_speed(self) -> float:
+        """Cycle door 1x -> 2x -> 4x -> 1x en return de nieuwe waarde."""
+        idx = self.allowed_speeds.index(self.speed_multiplier)
+        self.speed_multiplier = self.allowed_speeds[(idx + 1) % len(self.allowed_speeds)]
+        return self.speed_multiplier
 
     def can_afford_tower(self, tower_type: str) -> bool:
         """Check of de speler genoeg ECTS heeft voor een toren."""
@@ -38,6 +55,29 @@ class GameManager:
         self.ects -= cost
         return True
 
+    def get_tower_at(self, grid_x: int, grid_y: int):
+        """Zoek een toren op grid positie."""
+        for tower in self.towers:
+            if tower.grid_x == grid_x and tower.grid_y == grid_y:
+                return tower
+        return None
+
+    def sell_tower_at(self, grid_x: int, grid_y: int, grid_map: "GridMap") -> int:
+        """Verkoop toren op een cel en geef 75% van de kost terug.
+
+        Returns:
+            Teruggegeven ECTS. 0 als er geen toren op die cel staat.
+        """
+        tower = self.get_tower_at(grid_x, grid_y)
+        if tower is None:
+            return 0
+
+        refund = int(tower.cost * 0.75)
+        self.towers.remove(tower)
+        grid_map.remove_tower(grid_x, grid_y)
+        self.ects += refund
+        return refund
+
     def add_enemies(self, enemies: list) -> None:
         """Voeg een batch vijanden toe aan het speelveld."""
         self.enemies.extend(enemies)
@@ -46,10 +86,11 @@ class GameManager:
         """Update combat, rewards, wave status en fail condition."""
         if self.game_over:
             return
+        scaled_dt = dt * self.speed_multiplier
 
         # Update torens en maak projectielen
         for tower in self.towers:
-            result = tower.update(dt, self.enemies)
+            result = tower.update(scaled_dt, self.enemies)
             if result:
                 proj = Projectile(
                     result["x"], result["y"], result["target"],
@@ -60,7 +101,7 @@ class GameManager:
 
         # Update vijanden
         for enemy in self.enemies:
-            enemy.update(dt)
+            enemy.update(scaled_dt)
             if enemy.reached_end:
                 self.gpa -= enemy.gpa_damage
                 enemy.alive = False
@@ -69,7 +110,7 @@ class GameManager:
 
         # Update projectielen
         for proj in self.projectiles:
-            proj.update(dt)
+            proj.update(scaled_dt)
 
         # Verwijder dode objecten
         self.enemies = [e for e in self.enemies if e.alive]

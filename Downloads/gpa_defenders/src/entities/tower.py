@@ -231,6 +231,66 @@ class EnergyDrinkTower(Tower):
         pygame.draw.lines(screen, BLACK, False, points, 2)
 
 
+class ChatGPTTower(Tower):
+    """Specialist: kan alleen Quiz en Huiswerk targetten."""
+
+    def __init__(self, grid_x: int, grid_y: int):
+        super().__init__("chatgpt", grid_x, grid_y)
+
+    def find_target(self, enemies: list[Enemy]) -> Enemy | None:
+        closest = None
+        closest_dist = float("inf")
+        for enemy in enemies:
+            if enemy.enemy_type not in {"quiz", "huiswerk"}:
+                continue
+            if not enemy.alive or enemy.reached_end:
+                continue
+            dist = self.distance_to(enemy)
+            if dist <= self.range and dist < closest_dist:
+                closest = enemy
+                closest_dist = dist
+        return closest
+
+
+class PenPaperTower(Tower):
+    """Low-medium cost, medium damage allround tower."""
+
+    def __init__(self, grid_x: int, grid_y: int):
+        super().__init__("pen_paper", grid_x, grid_y)
+
+
+class MotivatieTower(Tower):
+    """Buff/support tower: draint alleen Attendance targets."""
+
+    def __init__(self, grid_x: int, grid_y: int):
+        super().__init__("motivatie", grid_x, grid_y)
+
+    def find_target(self, enemies: list[Enemy]) -> Enemy | None:
+        closest = None
+        closest_dist = float("inf")
+        for enemy in enemies:
+            if enemy.enemy_type != "attendance":
+                continue
+            if not enemy.alive or enemy.reached_end:
+                continue
+            dist = self.distance_to(enemy)
+            if dist <= self.range and dist < closest_dist:
+                closest = enemy
+                closest_dist = dist
+        return closest
+
+
+class HoorcollegesTower(Tower):
+    """Support tower: valt niet direct aan, maar bufft via GameManager."""
+
+    def __init__(self, grid_x: int, grid_y: int):
+        super().__init__("hoorcolleges", grid_x, grid_y)
+
+    def update(self, dt: float, enemies: list[Enemy] | None = None) -> dict | None:
+        """Hoorcolleges schiet niet; alleen passieve buff."""
+        return None
+
+
 # Factory functie om torens aan te maken
 def create_tower(tower_type: str, grid_x: int, grid_y: int) -> Tower:
     """Maak een toren aan op basis van type.
@@ -251,6 +311,10 @@ def create_tower(tower_type: str, grid_x: int, grid_y: int) -> Tower:
         "study_group": StudyGroupTower,
         "tutor": TutorTower,
         "energy_drink": EnergyDrinkTower,
+        "chatgpt": ChatGPTTower,
+        "pen_paper": PenPaperTower,
+        "motivatie": MotivatieTower,
+        "hoorcolleges": HoorcollegesTower,
     }
 
     if tower_type not in tower_classes:

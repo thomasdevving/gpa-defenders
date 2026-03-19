@@ -164,6 +164,20 @@ class Huiswerk(Enemy):
             self.current_speed = self.speed * (1.0 + progress * 0.5)
 
 
+class Aanwezigheid(Enemy):
+    """Attendance-vijand. Medium snelheid en HP, stabiele druk op het pad."""
+
+    def __init__(self, waypoints: list[tuple[int, int]]):
+        super().__init__("attendance", waypoints)
+
+
+class Opdracht(Enemy):
+    """Zware opdracht-vijand met hoge GPA-schade."""
+
+    def __init__(self, waypoints: list[tuple[int, int]]):
+        super().__init__("opdracht", waypoints)
+
+
 class Midterm(Enemy):
     """Trage maar sterke vijand met veel HP.
 

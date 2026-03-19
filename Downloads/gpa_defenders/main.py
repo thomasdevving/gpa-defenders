@@ -6,7 +6,8 @@ Start het spel door dit bestand te runnen:
 
 import math
 import pygame
-from src.ui.screens import show_start_screen, show_pause_menu, show_tutorial_screen, show_game_over_screen
+from src.ui.screens import (show_start_screen, show_pause_menu, show_tutorial_screen,
+                            show_game_over_screen, show_mode_select_screen)
 from src.settings import (
     SCREEN_WIDTH, SCREEN_HEIGHT, FPS, TITLE,
     TILE_SIZE, GRID_COLS, GRID_ROWS,
@@ -30,7 +31,8 @@ class Game:
         selected_tower: Huidig geselecteerd torentype.
     """
 
-    def __init__(self, screen: pygame.Surface = None, clock: pygame.time.Clock = None):
+    def __init__(self, screen: pygame.Surface = None, clock: pygame.time.Clock = None,
+                 multiplayer: bool = False):
         if not pygame.get_init():
             pygame.init()
         if screen is None:
@@ -50,6 +52,13 @@ class Game:
         self.tower_types_list = list(TOWER_TYPES.keys())
         self.pause_btn = pygame.Rect(8, 8, 38, 38)
         self._setup_tower_cards()
+
+        # Speler 2
+        self.multiplayer = multiplayer
+        if multiplayer:
+            self.p2_gx = GRID_COLS // 2
+            self.p2_gy = GRID_ROWS // 2
+            self.p2_tower_type = "coffee"
 
     def _setup_tower_cards(self) -> None:
         """Bereken de klikbare kaart-rects voor torenselectie."""
@@ -235,10 +244,29 @@ class Game:
                 if event.key == pygame.K_SPACE and not self.wave_manager.wave_active:
                     self.game_manager.add_enemies(self.wave_manager.spawn_wave())
 
-                # Toren selectie met cijfertoetsen
+                # P1: toren selectie met cijfertoetsen
                 for i, tower_type in enumerate(self.tower_types_list):
                     if event.key == pygame.K_1 + i:
                         self.selected_tower_type = tower_type
+
+                # P2: cursor en torenselectie
+                if self.multiplayer:
+                    if event.key == pygame.K_UP:
+                        self.p2_gy = max(0, self.p2_gy - 1)
+                    elif event.key == pygame.K_DOWN:
+                        self.p2_gy = min(GRID_ROWS - 1, self.p2_gy + 1)
+                    elif event.key == pygame.K_LEFT:
+                        self.p2_gx = max(0, self.p2_gx - 1)
+                    elif event.key == pygame.K_RIGHT:
+                        self.p2_gx = min(GRID_COLS - 1, self.p2_gx + 1)
+                    elif event.key == pygame.K_KP0:
+                        self._p2_place_tower()
+                    else:
+                        kp_keys = [pygame.K_KP1, pygame.K_KP2,
+                                   pygame.K_KP3, pygame.K_KP4]
+                        for i, kp in enumerate(kp_keys):
+                            if event.key == kp and i < len(self.tower_types_list):
+                                self.p2_tower_type = self.tower_types_list[i]
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if self.pause_btn.collidepoint(event.pos):
@@ -280,6 +308,29 @@ class Game:
         # Markeer de cel als bezet op de map
         self.grid_map.place_tower(grid_x, grid_y)
 
+    def _p2_place_tower(self) -> None:
+        """Speler 2 plaatst een toren op de cursorpositie."""
+        if not self.grid_map.can_place_tower(self.p2_gx, self.p2_gy):
+            return
+        if not self.game_manager.place_tower(self.p2_tower_type, self.p2_gx, self.p2_gy):
+            return
+        self.grid_map.place_tower(self.p2_gx, self.p2_gy)
+
+    def _draw_p2_cursor(self) -> None:
+        """Teken de cursor van speler 2 op het grid."""
+        x = self.p2_gx * TILE_SIZE
+        y = self.p2_gy * TILE_SIZE
+        can_place = self.grid_map.can_place_tower(self.p2_gx, self.p2_gy)
+        color = (80, 200, 255) if can_place else (255, 80, 80)
+
+        overlay = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
+        overlay.fill((*color, 55))
+        self.screen.blit(overlay, (x, y))
+        pygame.draw.rect(self.screen, color, (x, y, TILE_SIZE, TILE_SIZE), 2)
+
+        lbl = self.small_font.render("P2", True, color)
+        self.screen.blit(lbl, (x + 3, y + 3))
+
     def update(self, dt: float) -> None:
         """Update alle game objecten.
 
@@ -311,6 +362,9 @@ class Game:
         # Teken projectielen
         for proj in self.game_manager.projectiles:
             proj.draw(self.screen)
+
+        if self.multiplayer:
+            self._draw_p2_cursor()
 
         # Teken UI
         self._draw_ui()
@@ -355,6 +409,17 @@ class Game:
             hint = self.small_font.render("[SPACE] Volgende wave", True, GRAY)
             self.screen.blit(hint, (180, ui_y + 40))
 
+        # P2 indicator
+        if self.multiplayer:
+            p2_color = (80, 200, 255)
+            p2_name = TOWER_TYPES[self.p2_tower_type]["name"]
+            p2_lbl = self.small_font.render("P2:", True, p2_color)
+            p2_val = self.small_font.render(p2_name, True, WHITE)
+            self.screen.blit(p2_lbl, (20, ui_y + 68))
+            self.screen.blit(p2_val, (20 + p2_lbl.get_width() + 5, ui_y + 68))
+            hint2 = self.small_font.render("Pijltjes + Numpad 0", True, GRAY)
+            self.screen.blit(hint2, (20, ui_y + 88))
+
         # Toren selectiekaarten
         self._draw_tower_cards(ui_y)
 
@@ -396,8 +461,12 @@ if __name__ == "__main__":
     while show_start_screen(screen, clock):
         if not show_tutorial_screen(screen, clock):
             break
+        mode = show_mode_select_screen(screen, clock)
+        if mode == 'back':
+            continue
+        multiplayer = (mode == 'multi')
         while True:
-            game = Game(screen=screen, clock=clock)
+            game = Game(screen=screen, clock=clock, multiplayer=multiplayer)
             result = game.run()
             if result == 'quit':
                 exit()

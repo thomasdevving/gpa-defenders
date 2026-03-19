@@ -641,6 +641,119 @@ def show_pause_menu(screen: pygame.Surface, clock: pygame.time.Clock) -> str:
         pygame.display.flip()
 
 
+# ── Modusselectiescherm ───────────────────────────────────────────────────────
+
+def show_mode_select_screen(screen: pygame.Surface, clock: pygame.time.Clock) -> str:
+    """Toon het scherm om singleplayer of local co-op te kiezen.
+
+    Returns:
+        'single' → singleplayer.
+        'multi'  → local co-op.
+        'back'   → terug naar startscherm.
+    """
+    cx = SCREEN_WIDTH // 2
+
+    font_title = pygame.font.SysFont(None, 56, bold=True)
+    font_head  = pygame.font.SysFont(None, 32, bold=True)
+    font_body  = pygame.font.SysFont(None, 23)
+    font_small = pygame.font.SysFont(None, 21)
+
+    card_w, card_h = 390, 350
+    card_y = 115
+    card_single = pygame.Rect(cx - 20 - card_w, card_y, card_w, card_h)
+    card_multi  = pygame.Rect(cx + 20,           card_y, card_w, card_h)
+
+    single_info = [
+        "Speel alleen.",
+        "",
+        "Muis: toren plaatsen",
+        "1 / 2 / 3 / 4: toren selecteren",
+        "SPACE: volgende wave starten",
+        "ESC: pauze",
+    ]
+    multi_info = [
+        "Speel samen op hetzelfde scherm.",
+        "",
+        "Speler 1: muis (bestaande besturing)",
+        "",
+        "Speler 2:",
+        "Pijltjestoetsen: cursor bewegen",
+        "Numpad 1-4: toren selecteren",
+        "Numpad 0: toren plaatsen",
+    ]
+
+    while True:
+        clock.tick(60)
+        mx, my = pygame.mouse.get_pos()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return 'back'
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    return 'back'
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if card_single.collidepoint(mx, my):
+                    return 'single'
+                if card_multi.collidepoint(mx, my):
+                    return 'multi'
+
+        # Achtergrond
+        screen.fill((22, 26, 38))
+        for gx in range(0, SCREEN_WIDTH, 48):
+            pygame.draw.line(screen, (30, 35, 50), (gx, 0), (gx, SCREEN_HEIGHT), 1)
+        for gy in range(0, SCREEN_HEIGHT, 48):
+            pygame.draw.line(screen, (30, 35, 50), (0, gy), (SCREEN_WIDTH, gy), 1)
+
+        _outlined(screen, font_title, "Hoe wil je spelen?",
+                  cx, 38, WHITE, (10, 12, 22), thick=2)
+        pygame.draw.line(screen, (55, 62, 90),
+                         (40, 100), (SCREEN_WIDTH - 40, 100), 1)
+
+        for card, titel, kleur, regels, badge in [
+            (card_single, "Singleplayer",  (255, 210, 60),  single_info, "1 speler"),
+            (card_multi,  "Local Co-op",   (80,  200, 255), multi_info,  "2 spelers"),
+        ]:
+            hov = card.collidepoint(mx, my)
+            bg  = (38, 46, 66) if hov else (28, 34, 50)
+            bc  = kleur if hov else (52, 62, 92)
+
+            pygame.draw.rect(screen, bg, card, border_radius=12)
+            # Gekleurde bovenbalk
+            pygame.draw.rect(screen, kleur,
+                             (card.x, card.y, card.width, 6), border_radius=4)
+            pygame.draw.rect(screen, bc, card, 2, border_radius=12)
+
+            # Titel
+            th = font_head.render(titel, True, kleur)
+            screen.blit(th, (card.centerx - th.get_width() // 2, card.y + 18))
+
+            # Badge
+            bf = font_small.render(badge, True, (22, 26, 38))
+            bpad = 8
+            br = pygame.Rect(card.right - bf.get_width() - bpad * 2 - 8,
+                             card.y + 16, bf.get_width() + bpad * 2, 20)
+            pygame.draw.rect(screen, kleur, br, border_radius=4)
+            screen.blit(bf, (br.x + bpad, br.y + 2))
+
+            # Regels
+            for i, regel in enumerate(regels):
+                if regel == "":
+                    continue
+                is_sub = regel.startswith(" ") or regel[0].isupper() and ":" not in regel and i > 0
+                col = (188, 196, 218) if not regel.startswith("Speler") else kleur
+                if ":" in regel or regel.startswith("Pijl") or regel.startswith("Numpad") or regel.startswith("Muis") or regel.startswith("1 /") or regel.startswith("SPACE") or regel.startswith("ESC"):
+                    col = (155, 165, 185)
+                rs = font_body.render(regel, True, col)
+                screen.blit(rs, (card.x + 20, card.y + 58 + i * 30))
+
+        hint = font_small.render("Klik op een kaart om te kiezen  |  ESC om terug te gaan",
+                                 True, (70, 80, 110))
+        screen.blit(hint, (cx - hint.get_width() // 2, SCREEN_HEIGHT - 22))
+
+        pygame.display.flip()
+
+
 # ── Tutorial scherm ───────────────────────────────────────────────────────────
 
 def show_tutorial_screen(screen: pygame.Surface, clock: pygame.time.Clock) -> bool:

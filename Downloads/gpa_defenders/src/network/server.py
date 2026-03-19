@@ -65,8 +65,9 @@ class GameServer:
             self._send(conn, {"type": "CONNECTED", "player_id": player_id})
 
             with self._lock:
-                if len(self._clients) == MAX_PLAYERS:
-                    self._broadcast({"type": "GAME_START"})
+                start_game = len(self._clients) == MAX_PLAYERS
+            if start_game:
+                self._broadcast({"type": "GAME_START"})
 
             threading.Thread(target=self._client_loop,
                              args=(conn,), daemon=True).start()

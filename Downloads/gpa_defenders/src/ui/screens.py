@@ -776,7 +776,7 @@ def show_tutorial_screen(screen: pygame.Surface, clock: pygame.time.Clock) -> bo
         bg_btn = (55, 115, 55) if btn_hov else (38, 85, 38)
         pygame.draw.rect(screen, bg_btn, btn, border_radius=10)
         pygame.draw.rect(screen, (90, 175, 90), btn, 2, border_radius=10)
-        lbl = font_head.render("Spel starten  ▶", True, WHITE)
+        lbl = font_head.render("Spel starten", True, WHITE)
         screen.blit(lbl, (btn.centerx - lbl.get_width() // 2,
                           btn.centery - lbl.get_height() // 2))
 

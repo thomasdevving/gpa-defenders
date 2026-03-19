@@ -129,6 +129,33 @@ TOWER_TYPES = {
     },
 }
 
+# Tower upgrades (backend data-driven; UI can consume later)
+TOWER_UPGRADES = {
+    "coffee": {},
+    "study_group": {},
+    "tutor": {},
+    "energy_drink": {},
+    "pen_paper": {},
+    "hoorcolleges": {},
+    "chatgpt": {
+        "chatgpt_plus": {
+            "name": "ChatGPT+",
+            "cost": 12 * ECONOMY_SCALE,
+            "costs": {"energy": 12 * ECONOMY_SCALE},
+            "fire_rate_multiplier": 2.0,
+        }
+    },
+    "motivatie": {
+        "lock_in": {
+            "name": "Lock-in",
+            "cost": 10 * ECONOMY_SCALE,
+            "costs": {"energy": 10 * ECONOMY_SCALE},
+            "unlock_wave": 2,  # beschikbaar na wave 2
+            "efficiency_multiplier": 1.5,  # 150% efficiency
+        }
+    },
+}
+
 # Enemy definities: (naam, hp, snelheid, gpa_schade, rewards, kleur)
 ENEMY_TYPES = {
     "quiz": {
@@ -136,7 +163,7 @@ ENEMY_TYPES = {
         "hp": 10,
         "speed": 60,
         "gpa_damage": 0.1,
-        "rewards": {"energy": 3 * ECONOMY_SCALE},
+        "rewards": {"energy": int(0.2 * ECONOMY_SCALE)},
         "color": WHITE,
     },
     "huiswerk": {
@@ -144,7 +171,7 @@ ENEMY_TYPES = {
         "hp": 8,
         "speed": 120,
         "gpa_damage": 0.2,
-        "rewards": {"energy": 5 * ECONOMY_SCALE},
+        "rewards": {"energy": int(0.3 * ECONOMY_SCALE)},
         "color": RED,
     },
     "attendance": {
@@ -152,7 +179,7 @@ ENEMY_TYPES = {
         "hp": 22,
         "speed": 50,
         "gpa_damage": 0.15,
-        "rewards": {"energy": 7 * ECONOMY_SCALE},
+        "rewards": {"energy": int(0.35 * ECONOMY_SCALE)},
         "color": (255, 80, 140),
     },
     "opdracht": {
@@ -161,7 +188,7 @@ ENEMY_TYPES = {
         "speed": 45,
         # Zelfde schade als Midterm + Endterm gecombineerd.
         "gpa_damage": 1.3,
-        "rewards": {"energy": 16 * ECONOMY_SCALE},
+        "rewards": {"energy": int(1.3 * ECONOMY_SCALE)},
         "color": (180, 90, 220),
     },
     "midterm": {
@@ -169,7 +196,7 @@ ENEMY_TYPES = {
         "hp": 40,
         "speed": 35,
         "gpa_damage": 0.5,
-        "rewards": {"energy": 10 * ECONOMY_SCALE},
+        "rewards": {"energy": int(0.6 * ECONOMY_SCALE)},
         "color": ORANGE,
     },
     "endterm": {
@@ -177,7 +204,7 @@ ENEMY_TYPES = {
         "hp": 65,
         "speed": 30,
         "gpa_damage": 0.8,
-        "rewards": {"energy": 14 * ECONOMY_SCALE},
+        "rewards": {"energy": int(0.8 * ECONOMY_SCALE)},
         "color": (200, 110, 60),
     },
     "professor": {
@@ -185,7 +212,7 @@ ENEMY_TYPES = {
         "hp": 100,
         "speed": 25,
         "gpa_damage": 1.0,
-        "rewards": {"energy": 25 * ECONOMY_SCALE},
+        "rewards": {"energy": 2 * ECONOMY_SCALE},
         "color": DARK_GRAY,
     },
 }

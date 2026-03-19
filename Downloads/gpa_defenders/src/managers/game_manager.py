@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from src.entities.projectile import Projectile
 from src.entities.tower import create_tower
 from src.settings import (
-    STARTING_GPA, STARTING_ENERGY, FAILING_GPA, TOWER_TYPES
+    STARTING_GPA, STARTING_ENERGY, FAILING_GPA, TOWER_TYPES, TOWER_UPGRADES
 )
 
 if TYPE_CHECKING:
@@ -92,6 +92,51 @@ class GameManager:
             costs["energy"] = max(1, discounted)
 
         return costs
+
+    def get_upgrade_config(self, tower_type: str, upgrade_id: str) -> dict | None:
+        """Haal upgradeconfig op voor een torentype."""
+        return TOWER_UPGRADES.get(tower_type, {}).get(upgrade_id)
+
+    def get_tower_upgrades(self, tower_type: str) -> dict[str, dict]:
+        """Alle gedefinieerde upgrades voor een torentype."""
+        return TOWER_UPGRADES.get(tower_type, {})
+
+    def can_upgrade_tower(
+        self, tower, upgrade_id: str, current_wave: int, wave_active: bool = False
+    ) -> bool:
+        """Check of een bestaande toren geupgrade kan worden."""
+        upgrade = self.get_upgrade_config(tower.tower_type, upgrade_id)
+        if upgrade is None or tower.has_upgrade(upgrade_id):
+            return False
+
+        unlock_wave = int(upgrade.get("unlock_wave", 0))
+        # "Na wave N": niet tijdens die wave, wel vanaf de eerstvolgende pauze/frame erna.
+        if current_wave < unlock_wave:
+            return False
+        if current_wave == unlock_wave and wave_active:
+            return False
+
+        costs = dict(upgrade.get("costs", {"energy": upgrade["cost"]}))
+        return self.can_afford_costs(costs)
+
+    def upgrade_tower_at(
+        self, grid_x: int, grid_y: int, upgrade_id: str,
+        current_wave: int, wave_active: bool = False
+    ) -> bool:
+        """Voer een toren-upgrade uit op een gridpositie."""
+        tower = self.get_tower_at(grid_x, grid_y)
+        if tower is None:
+            return False
+
+        if not self.can_upgrade_tower(tower, upgrade_id, current_wave, wave_active):
+            return False
+
+        upgrade = self.get_upgrade_config(tower.tower_type, upgrade_id)
+        costs = dict(upgrade.get("costs", {"energy": upgrade["cost"]}))
+        if not self.spend_costs(costs):
+            return False
+
+        return tower.apply_upgrade(upgrade_id, upgrade)
 
     def get_damage_multiplier(self) -> float:
         """Globale damage multiplier door support towers."""

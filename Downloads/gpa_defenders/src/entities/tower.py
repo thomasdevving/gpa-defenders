@@ -41,6 +41,9 @@ class Tower(Entity):
         self.damage = config["damage"]
         self.range = config["range"]
         self.fire_rate = config["fire_rate"]
+        self.base_damage = self.damage
+        self.base_range = self.range
+        self.base_fire_rate = self.fire_rate
         self.color = config["color"]
         self.projectile_color = config["projectile_color"]
         self.projectile_speed = config["projectile_speed"]
@@ -50,6 +53,7 @@ class Tower(Entity):
         self.fire_cooldown = 0.0
         self.target = None
         self.size = TILE_SIZE // 2 - 4
+        self.applied_upgrades: set[str] = set()
 
     def find_target(self, enemies: list[Enemy]) -> Enemy | None:
         """Zoek de dichtstbijzijnde vijand binnen bereik.
@@ -114,6 +118,39 @@ class Tower(Entity):
             self.target = self.find_target(enemies)
 
         return self.fire()
+
+    def has_upgrade(self, upgrade_id: str) -> bool:
+        """Check of deze toren al een specifieke upgrade heeft."""
+        return upgrade_id in self.applied_upgrades
+
+    def apply_upgrade(self, upgrade_id: str, upgrade_config: dict) -> bool:
+        """Pas een upgrade toe op deze toren.
+
+        Returns:
+            True als toegepast, False als de upgrade al actief was.
+        """
+        if self.has_upgrade(upgrade_id):
+            return False
+
+        fire_rate_multiplier = upgrade_config.get("fire_rate_multiplier")
+        if fire_rate_multiplier is not None:
+            self.fire_rate *= fire_rate_multiplier
+
+        damage_multiplier = upgrade_config.get("damage_multiplier")
+        if damage_multiplier is not None:
+            self.damage *= damage_multiplier
+
+        # "Efficiency" telt als algemene output-multiplier; hier via damage.
+        efficiency_multiplier = upgrade_config.get("efficiency_multiplier")
+        if efficiency_multiplier is not None:
+            self.damage *= efficiency_multiplier
+
+        range_bonus = upgrade_config.get("range_bonus")
+        if range_bonus is not None:
+            self.range += range_bonus
+
+        self.applied_upgrades.add(upgrade_id)
+        return True
 
     def draw(self, screen: pygame.Surface) -> None:
         """Teken de toren.

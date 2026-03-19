@@ -85,8 +85,8 @@ TOWER_TYPES = {
     },
     "chatgpt": {
         "name": "ChatGPT",
-        "cost": 18 * ECONOMY_SCALE,
-        "costs": {"energy": 18 * ECONOMY_SCALE},
+        "cost": 500,
+        "costs": {"energy": 500},
         "damage": 6,
         "range": 145,
         "fire_rate": 0.9,

@@ -153,9 +153,9 @@ def _banner(surf: pygame.Surface, font_l: pygame.font.Font, font_s: pygame.font.
     _outlined(surf, font_l, "GPA",       cx, by + 8,  _TITLE_Y, _TITLE_SH, 4)
     _outlined(surf, font_l, "DEFENDERS", cx, by + 58, _TITLE_O, _TITLE_SH, 4)
 
-    # Ondertitel onder banner
-    sub = font_s.render("— Bescherm je diploma! —", True, (255, 232, 95))
-    surf.blit(sub, (cx - sub.get_width() // 2, by + bh + 5))
+    # Ondertitel onder banner — met donkere omtrek voor leesbaarheid
+    _outlined(surf, font_s, "— Bescherm je diploma! —",
+              cx, by + bh + 6, (255, 238, 100), (40, 20, 0), thick=2)
 
 
 # ── Speelknop ─────────────────────────────────────────────────────────────────
@@ -171,10 +171,6 @@ def _play_button(surf: pygame.Surface, cx: int, cy: int,
     # Binnenste cirkel
     pygame.draw.circle(surf, _PLAY_D, (cx, cy), ri + 3)
     pygame.draw.circle(surf, _PLAY_H if hovered else _PLAY_C, (cx, cy), ri)
-    # Glans-arc bovenaan
-    pygame.draw.arc(surf, (255, 200, 160),
-                    pygame.Rect(cx - ri + 12, cy - ri + 8, ri - 4, ri // 2),
-                    math.pi * 0.15, math.pi * 0.85, 4)
     # Driehoek (play-icoon)
     tx, ty = cx - 14, cy
     pygame.draw.polygon(surf, WHITE, [(tx, ty - 28), (tx, ty + 28), (tx + 42, ty)])
@@ -412,16 +408,108 @@ def _controls(surf: pygame.Surface, font: pygame.font.Font, cx: int, y: int) -> 
         ("klik", "toren plaatsen"),
         ("ESC", "stoppen"),
     ]
-    total_w = 510
+    # Meet de breedte van elk item voor correcte verdeling
+    badge_w = 58
+    gap = 8
+    items = []
+    for key, desc in hints:
+        k_surf = font.render(key, True, YELLOW)
+        d_surf = font.render(desc, True, (195, 185, 170))
+        item_w = badge_w + gap + d_surf.get_width()
+        items.append((key, desc, k_surf, d_surf, item_w))
+
+    spacing = 18  # vaste tussenruimte tussen items
+    total_w = sum(w for *_, w in items) + spacing * (len(items) - 1)
     x0 = cx - total_w // 2
-    for i, (key, desc) in enumerate(hints):
-        kx = x0 + i * 130
-        pygame.draw.rect(surf, (55, 50, 44), (kx, y, 58, 22), border_radius=4)
-        pygame.draw.rect(surf, (118, 108, 95), (kx, y, 58, 22), 2, border_radius=4)
-        k = font.render(key, True, YELLOW)
-        surf.blit(k, (kx + 29 - k.get_width() // 2, y + 3))
-        d = font.render(desc, True, (195, 185, 170))
-        surf.blit(d, (kx + 63, y + 3))
+
+    x = x0
+    for key, desc, k_surf, d_surf, item_w in items:
+        pygame.draw.rect(surf, (55, 50, 44), (x, y, badge_w, 22), border_radius=4)
+        pygame.draw.rect(surf, (118, 108, 95), (x, y, badge_w, 22), 2, border_radius=4)
+        surf.blit(k_surf, (x + badge_w // 2 - k_surf.get_width() // 2, y + 3))
+        surf.blit(d_surf, (x + badge_w + gap, y + 3))
+        x += item_w + spacing
+
+
+# ── Pauzemenu ─────────────────────────────────────────────────────────────────
+
+def show_pause_menu(screen: pygame.Surface, clock: pygame.time.Clock) -> bool:
+    """Toon het pauzemenu over het huidige spelscherm.
+
+    Returns:
+        True  → doorgaan.
+        False → stoppen.
+    """
+    cx, cy = SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2
+
+    font_title = pygame.font.SysFont(None, 62, bold=True)
+    font_btn   = pygame.font.SysFont(None, 36)
+
+    bw, bh = 280, 60
+    btn_continue = pygame.Rect(cx - bw // 2, cy - 10,      bw, bh)
+    btn_quit     = pygame.Rect(cx - bw // 2, cy + bh + 16, bw, bh)
+
+    # Vries het huidige scherm in als achtergrond
+    frozen = screen.copy()
+
+    while True:
+        clock.tick(60)
+        mx, my = pygame.mouse.get_pos()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return False
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    return True          # ESC nogmaals = doorgaan
+                if event.key == pygame.K_RETURN:
+                    return True
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if btn_continue.collidepoint(mx, my):
+                    return True
+                if btn_quit.collidepoint(mx, my):
+                    return False
+
+        # Bevroren spelscherm als achtergrond
+        screen.blit(frozen, (0, 0))
+
+        # Semi-transparante overlay
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 165))
+        screen.blit(overlay, (0, 0))
+
+        # Paneel
+        panel = pygame.Rect(cx - 175, cy - 90, 350, 260)
+        pygame.draw.rect(screen, (38, 35, 30), panel, border_radius=12)
+        pygame.draw.rect(screen, (100, 90, 75), panel, 3, border_radius=12)
+
+        # Titel
+        _outlined(screen, font_title, "GEPAUZEERD", cx, cy - 80, WHITE, (20, 15, 10), thick=2)
+
+        # Knoppen
+        for rect, label, is_quit in [
+            (btn_continue, "Doorgaan",  False),
+            (btn_quit,     "Stoppen",   True),
+        ]:
+            hovered = rect.collidepoint(mx, my)
+            if is_quit:
+                bg     = (175, 45, 45) if hovered else (130, 30, 30)
+                border = (220, 80, 80)
+            else:
+                bg     = (55, 110, 55) if hovered else (38, 82, 38)
+                border = (90, 170, 90)
+            pygame.draw.rect(screen, bg,     rect, border_radius=8)
+            pygame.draw.rect(screen, border, rect, 2, border_radius=8)
+            lbl = font_btn.render(label, True, WHITE)
+            screen.blit(lbl, (rect.centerx - lbl.get_width() // 2,
+                               rect.centery - lbl.get_height() // 2))
+
+        # Hint
+        hint_font = pygame.font.SysFont(None, 22)
+        hint = hint_font.render("ESC of ENTER om door te gaan", True, (140, 130, 115))
+        screen.blit(hint, (cx - hint.get_width() // 2, btn_quit.bottom + 14))
+
+        pygame.display.flip()
 
 
 # ── Hoofd startscherm ─────────────────────────────────────────────────────────

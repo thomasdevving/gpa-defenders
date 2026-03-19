@@ -6,7 +6,7 @@ Start het spel door dit bestand te runnen:
 
 import pygame
 import sys
-from src.ui.screens import show_start_screen
+from src.ui.screens import show_start_screen, show_pause_menu
 from src.settings import (
     SCREEN_WIDTH, SCREEN_HEIGHT, FPS, TITLE,
     TILE_SIZE, GRID_COLS, GRID_ROWS,
@@ -60,6 +60,7 @@ class Game:
 
         self.selected_tower_type = "coffee"
         self.tower_types_list = list(TOWER_TYPES.keys())
+        self.pause_btn = pygame.Rect(8, 8, 38, 38)
 
         self._setup_grid()
 
@@ -146,7 +147,9 @@ class Game:
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    return False
+                    if not show_pause_menu(self.screen, self.clock):
+                        return False
+                    return True
                 if event.key == pygame.K_SPACE and not self.wave_active:
                     self.spawn_wave()
 
@@ -156,7 +159,11 @@ class Game:
                         self.selected_tower_type = tower_type
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                self._handle_click(event.pos)
+                if self.pause_btn.collidepoint(event.pos):
+                    if not show_pause_menu(self.screen, self.clock):
+                        return False
+                else:
+                    self._handle_click(event.pos)
 
         return True
 
@@ -260,11 +267,24 @@ class Game:
 
         # Teken UI
         self._draw_ui()
+        self._draw_pause_btn()
 
         if self.game_over:
             self._draw_game_over()
 
         pygame.display.flip()
+
+    def _draw_pause_btn(self) -> None:
+        """Teken de pauzeknop linksboven."""
+        mx, my = pygame.mouse.get_pos()
+        hovered = self.pause_btn.collidepoint(mx, my)
+        bg = (80, 75, 70) if hovered else (50, 48, 44)
+        pygame.draw.rect(self.screen, bg, self.pause_btn, border_radius=6)
+        pygame.draw.rect(self.screen, (130, 120, 105), self.pause_btn, 2, border_radius=6)
+        # Twee verticale balkjes (pauze-icoon)
+        bx, by = self.pause_btn.x + 11, self.pause_btn.y + 10
+        pygame.draw.rect(self.screen, WHITE, (bx,      by, 6, 18))
+        pygame.draw.rect(self.screen, WHITE, (bx + 10, by, 6, 18))
 
     def _draw_ui(self) -> None:
         """Teken de UI balk onderaan het scherm."""

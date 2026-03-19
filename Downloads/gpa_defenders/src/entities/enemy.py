@@ -87,23 +87,33 @@ class Enemy(Entity):
             if self.slow_timer <= 0:
                 self.current_speed = self.speed
 
-        # Beweeg naar het volgende waypoint
-        if self.waypoint_index < len(self.waypoints):
+        # Beweeg naar waypoints zonder overshoot-oscillatie bij hoge snelheden.
+        remaining_move = self.current_speed * dt
+        while remaining_move > 0 and self.waypoint_index < len(self.waypoints):
             target_x, target_y = self.waypoints[self.waypoint_index]
             dx = target_x - self.x
             dy = target_y - self.y
             distance = math.sqrt(dx * dx + dy * dy)
 
-            if distance < 2:
+            # Al op het waypoint: ga direct naar de volgende.
+            if distance == 0:
                 self.waypoint_index += 1
-                if self.waypoint_index >= len(self.waypoints):
-                    self.reached_end = True
-                    return
+                continue
+
+            # Kan deze stap het waypoint halen/voorbijgaan?
+            if remaining_move >= distance:
+                self.x = target_x
+                self.y = target_y
+                remaining_move -= distance
+                self.waypoint_index += 1
             else:
-                # Normaliseer en beweeg
-                move = self.current_speed * dt
-                self.x += (dx / distance) * move
-                self.y += (dy / distance) * move
+                # Normaliseer en beweeg een deel van de afstand.
+                self.x += (dx / distance) * remaining_move
+                self.y += (dy / distance) * remaining_move
+                remaining_move = 0
+
+        if self.waypoint_index >= len(self.waypoints):
+            self.reached_end = True
 
     def draw(self, screen: pygame.Surface) -> None:
         """Teken de vijand met een HP-balk.

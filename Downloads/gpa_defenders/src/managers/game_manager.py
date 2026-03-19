@@ -4,7 +4,9 @@ from typing import TYPE_CHECKING
 
 from src.entities.projectile import Projectile
 from src.entities.tower import create_tower
-from src.settings import STARTING_GPA, STARTING_ENERGY, FAILING_GPA, TOWER_TYPES
+from src.settings import (
+    STARTING_GPA, STARTING_ENERGY, FAILING_GPA, TOWER_TYPES
+)
 
 if TYPE_CHECKING:
     from src.managers.grid import GridMap
@@ -135,12 +137,16 @@ class GameManager:
             if enemy.reached_end:
                 self.gpa -= enemy.gpa_damage
                 enemy.alive = False
-            if not enemy.alive and not enemy.reached_end:
-                self.add_currency("energy", enemy.energy_reward)
 
         # Update projectielen
         for proj in self.projectiles:
             proj.update(scaled_dt)
+
+        # Reward voor kills (niet voor enemies die het einde halen).
+        for enemy in self.enemies:
+            if not enemy.alive and not enemy.reached_end:
+                for currency, amount in enemy.rewards.items():
+                    self.add_currency(currency, amount)
 
         # Verwijder dode objecten
         self.enemies = [e for e in self.enemies if e.alive]

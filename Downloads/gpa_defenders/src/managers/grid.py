@@ -14,15 +14,19 @@ class GridMap:
     def _setup_grid(self) -> None:
         """Maak het grid en definieer het vijandpad."""
         self.grid = [[0 for _ in range(GRID_COLS)] for _ in range(GRID_ROWS)]
+        y_row_2 = 2 * TILE_SIZE + TILE_SIZE // 2
+        y_row_5 = 5 * TILE_SIZE + TILE_SIZE // 2
+        x_col_4 = 4 * TILE_SIZE + TILE_SIZE // 2
+        x_col_10 = 10 * TILE_SIZE + TILE_SIZE // 2
 
         # S-vormig voorbeeldpad
         self.waypoints = [
-            (0, 2 * TILE_SIZE + TILE_SIZE // 2),
-            (4 * TILE_SIZE, 2 * TILE_SIZE + TILE_SIZE // 2),
-            (4 * TILE_SIZE, 5 * TILE_SIZE + TILE_SIZE // 2),
-            (10 * TILE_SIZE, 5 * TILE_SIZE + TILE_SIZE // 2),
-            (10 * TILE_SIZE, 2 * TILE_SIZE + TILE_SIZE // 2),
-            (SCREEN_WIDTH, 2 * TILE_SIZE + TILE_SIZE // 2),
+            (-TILE_SIZE // 2, y_row_2),
+            (x_col_4, y_row_2),
+            (x_col_4, y_row_5),
+            (x_col_10, y_row_5),
+            (x_col_10, y_row_2),
+            (SCREEN_WIDTH + TILE_SIZE // 2, y_row_2),
         ]
 
         # Markeer pad-cellen in het grid

@@ -868,12 +868,9 @@ def show_network_lobby_screen(screen: pygame.Surface,
                         mode   = 'join'
                         status = "Voer het IP-adres van de host in:"
 
-        # Poll client op GAME_START
-        if client and client.connected:
-            msg = client.poll()
-            if msg and msg["type"] == "GAME_START":
-                is_host = (mode == 'host')
-                return client, is_host
+        # Controleer of het spel is gestart (gezet door recv-thread)
+        if client and client.game_started:
+            return client, (mode == 'host')
 
         # ── Tekenen ──────────────────────────────────────────────────────────
         screen.fill((22, 26, 38))

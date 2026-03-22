@@ -25,12 +25,15 @@ class Tower(Entity):
         color: Kleur van de toren.
         target: Huidige vijand waarop geschoten wordt.
     """
+    _next_instance_id = 1
 
     def __init__(self, tower_type: str, grid_x: int, grid_y: int):
         # Centreer de toren in de grid cel
         pixel_x = grid_x * TILE_SIZE + TILE_SIZE // 2
         pixel_y = grid_y * TILE_SIZE + TILE_SIZE // 2
         super().__init__(pixel_x, pixel_y)
+        self.instance_id = Tower._next_instance_id
+        Tower._next_instance_id += 1
 
         config = TOWER_TYPES[tower_type]
         self.tower_type = tower_type
@@ -102,6 +105,7 @@ class Tower(Entity):
             "color": self.projectile_color,
             "speed": self.projectile_speed,
             "tower_type": self.tower_type,
+            "slow_source_id": self.instance_id,
         }
 
     def update(self, dt: float, enemies: list[Enemy] | None = None) -> dict | None:

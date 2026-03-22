@@ -62,8 +62,8 @@ FAILING_GPA = 5.5
 
 # Economy
 ECONOMY_SCALE = 40
-STARTING_ENERGY = 16 * ECONOMY_SCALE
-WAVE_CLEAR_ENERGY_BASE = int(0.55 * ECONOMY_SCALE)
+STARTING_ENERGY = 20 * ECONOMY_SCALE
+WAVE_CLEAR_ENERGY_BASE = int(0.65 * ECONOMY_SCALE)
 WAVE_CLEAR_ENERGY_GROWTH = int(0.28 * ECONOMY_SCALE)
 
 # Balancemodel (geinspireerd door de rondedruk/economiecurve uit Bloons TD).
@@ -126,7 +126,7 @@ TOWER_TYPES = {
         "desc": "Specialist: kan alleen Quiz en Huiswerk targetten.",
         "cost": 20 * ECONOMY_SCALE,
         "costs": {"energy": 20 * ECONOMY_SCALE},
-        "damage": 7.5,
+        "damage": 16.0,
         "range": 150,
         "fire_rate": 1.25,
         "color": (90, 220, 210),
@@ -173,7 +173,15 @@ TOWER_TYPES = {
 
 # Tower upgrades (backend data-driven; UI can consume later)
 TOWER_UPGRADES = {
-    "coffee": {},
+    "coffee": {
+        "espresso": {
+            "name": "Espresso",
+            "cost": 8 * ECONOMY_SCALE,
+            "costs": {"energy": 8 * ECONOMY_SCALE},
+            "damage_multiplier": 1.40,
+            "fire_rate_multiplier": 1.30,
+        }
+    },
     "study_group": {},
     "tutor": {},
     "energy_drink": {},
@@ -253,7 +261,7 @@ ENEMY_TYPES = {
         "hp": 14,
         "speed": 68,
         "gpa_damage": 0.08,
-        "rewards": {"energy": int(0.24 * ECONOMY_SCALE)},
+        "rewards": {"energy": int(0.38 * ECONOMY_SCALE)},
         "threat": 1.0,
         "unlock_wave": 1,
         "color": WHITE,

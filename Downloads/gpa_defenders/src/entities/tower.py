@@ -8,6 +8,7 @@ import math
 from src.entities.entity import Entity
 from src.entities.enemy import Enemy
 from src.settings import TOWER_TYPES, BLACK, TILE_SIZE
+from src.utils.asset_loader import get_tower_sprite, has_tower_sprites
 
 
 class Tower(Entity):
@@ -158,7 +159,16 @@ class Tower(Entity):
         Args:
             screen: Het pygame scherm.
         """
-        # Vierkant als basis
+        # Probeer sprite te gebruiken
+        if has_tower_sprites():
+            sprite_size = (TILE_SIZE, TILE_SIZE)
+            sprite = get_tower_sprite(self.tower_type, sprite_size)
+            if sprite:
+                screen.blit(sprite, (int(self.x) - TILE_SIZE // 2,
+                                     int(self.y) - TILE_SIZE // 2))
+                return
+
+        # Fallback: vierkant als basis
         rect = pygame.Rect(
             int(self.x) - self.size,
             int(self.y) - self.size,

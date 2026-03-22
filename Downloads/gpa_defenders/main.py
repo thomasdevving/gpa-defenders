@@ -19,6 +19,7 @@ from src.settings import (
 from src.managers.grid import GridMap
 from src.managers.wave_manager import WaveManager
 from src.managers.game_manager import GameManager
+from src.utils.asset_loader import init_tower_sprites, get_tower_sprite, has_tower_sprites
 
 
 class Game:
@@ -51,6 +52,7 @@ class Game:
         self.grid_map = GridMap()
         self.wave_manager = WaveManager(self.grid_map.waypoints)
         self.game_manager = GameManager()
+        init_tower_sprites()
 
         self.selected_tower_type = "coffee"
         self.tower_types_list = list(TOWER_TYPES.keys())
@@ -65,9 +67,8 @@ class Game:
         self.selected_tower = None
         self._sell_btn: pygame.Rect | None = None
 
-        # Snelheidsknop
-        ui_y = GRID_ROWS * TILE_SIZE
-        self.speed_btn = pygame.Rect(348, ui_y + 8, 82, 58)
+        # Snelheidsknop (rechtsboven, naast pauzeknop)
+        self.speed_btn = pygame.Rect(SCREEN_WIDTH - 90, 8, 80, 38)
 
         # Automatische wave-countdown
         self._wave_countdown: float = 5.0   # initieel 5s voor eerste wave
@@ -97,10 +98,23 @@ class Game:
     def _draw_tower_icon(self, tower_type: str, cx: int, cy: int,
                          sz: int, active: bool) -> None:
         """Teken het icoon voor een torentype."""
+        # Probeer sprite te gebruiken
+        if has_tower_sprites():
+            sprite = get_tower_sprite(tower_type, (sz * 2, sz * 2))
+            if sprite:
+                if not active:
+                    # Grijstint voor niet-beschikbare torens
+                    gray_sprite = sprite.copy()
+                    gray_sprite.fill((60, 60, 60, 0), special_flags=pygame.BLEND_RGB_MULT)
+                    self.screen.blit(gray_sprite, (cx - sz, cy - sz))
+                else:
+                    self.screen.blit(sprite, (cx - sz, cy - sz))
+                return
+
+        # Fallback: originele getekende iconen
         col = TOWER_TYPES[tower_type]["color"] if active else (68, 65, 60)
 
         if tower_type == "coffee":
-            # Koffiekopje
             hw = int(sz * 0.52)
             pts = [(cx - hw, cy - int(sz * 0.08)),
                    (cx + hw, cy - int(sz * 0.08)),
@@ -108,11 +122,9 @@ class Game:
                    (cx - int(hw * 0.72), cy + int(sz * 0.5))]
             pygame.draw.polygon(self.screen, col, pts)
             pygame.draw.polygon(self.screen, (40, 25, 10), pts, 2)
-            # Oor
             pygame.draw.arc(self.screen, col,
                             pygame.Rect(cx + int(hw * 0.58), cy, int(hw * 0.7), int(sz * 0.32)),
                             -math.pi * 0.5, math.pi * 0.5, 3)
-            # Stoom
             sc = (185, 188, 205) if active else (70, 68, 65)
             for ox in (-int(sz * 0.2), 0, int(sz * 0.2)):
                 for k in range(2):
@@ -122,7 +134,6 @@ class Game:
                                      (cx + ox + ((-1) ** k) * 4, y1 - 5), 2)
 
         elif tower_type == "study_group":
-            # Twee studentenfiguren
             skin = (200, 168, 128) if active else (68, 65, 60)
             for ox in (-int(sz * 0.28), int(sz * 0.28)):
                 pygame.draw.circle(self.screen, skin,
@@ -135,7 +146,6 @@ class Game:
                                  (cx + ox + int(sz * 0.18), cy + int(sz * 0.1)), 2)
 
         elif tower_type == "tutor":
-            # Opengeslagen boek
             hw, hh = int(sz * 0.46), int(sz * 0.36)
             page1 = (228, 222, 208) if active else (72, 70, 65)
             page2 = (244, 240, 226) if active else (78, 75, 70)
@@ -149,7 +159,6 @@ class Game:
                 pygame.draw.line(self.screen, lc, (cx + 4,      y), (cx + hw - 5, y), 1)
 
         elif tower_type == "energy_drink":
-            # Bliksemflits
             pts = [
                 (cx + int(sz * 0.08),  cy - int(sz * 0.48)),
                 (cx - int(sz * 0.22),  cy + int(sz * 0.05)),

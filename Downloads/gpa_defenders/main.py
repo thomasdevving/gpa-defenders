@@ -19,7 +19,160 @@ from src.settings import (
 from src.managers.grid import GridMap
 from src.managers.wave_manager import WaveManager
 from src.managers.game_manager import GameManager
-from src.utils.asset_loader import init_tower_sprites, get_tower_sprite, has_tower_sprites
+from src.utils.asset_loader import (
+    init_tower_sprites, init_ground_tiles, init_enemy_sprites,
+    get_grass_tile, get_path_tile, has_ground_tiles,
+)
+
+
+def draw_tower_icon(screen: pygame.Surface, tower_type: str,
+                    cx: int, cy: int, sz: int, active: bool = True) -> None:
+    """Teken het hand-getekende icoon voor een torentype.
+
+    Wordt gebruikt in zowel het menu als op geplaatste torens.
+    """
+    col = TOWER_TYPES[tower_type]["color"] if active else (68, 65, 60)
+
+    if tower_type == "coffee":
+        hw = int(sz * 0.52)
+        pts = [(cx - hw, cy - int(sz * 0.08)),
+               (cx + hw, cy - int(sz * 0.08)),
+               (cx + int(hw * 0.72), cy + int(sz * 0.5)),
+               (cx - int(hw * 0.72), cy + int(sz * 0.5))]
+        pygame.draw.polygon(screen, col, pts)
+        pygame.draw.polygon(screen, (40, 25, 10), pts, 2)
+        pygame.draw.arc(screen, col,
+                        pygame.Rect(cx + int(hw * 0.58), cy, int(hw * 0.7), int(sz * 0.32)),
+                        -math.pi * 0.5, math.pi * 0.5, 3)
+        sc = (185, 188, 205) if active else (70, 68, 65)
+        for ox in (-int(sz * 0.2), 0, int(sz * 0.2)):
+            for k in range(2):
+                y1 = cy - int(sz * 0.18) - k * 7
+                pygame.draw.line(screen, sc,
+                                 (cx + ox, y1),
+                                 (cx + ox + ((-1) ** k) * 4, y1 - 5), 2)
+
+    elif tower_type == "study_group":
+        skin = (200, 168, 128) if active else (68, 65, 60)
+        for ox in (-int(sz * 0.28), int(sz * 0.28)):
+            pygame.draw.circle(screen, skin,
+                               (cx + ox, cy - int(sz * 0.24)), int(sz * 0.17))
+            pygame.draw.line(screen, col,
+                             (cx + ox, cy - int(sz * 0.06)),
+                             (cx + ox, cy + int(sz * 0.32)), 3)
+            pygame.draw.line(screen, col,
+                             (cx + ox - int(sz * 0.18), cy + int(sz * 0.1)),
+                             (cx + ox + int(sz * 0.18), cy + int(sz * 0.1)), 2)
+
+    elif tower_type == "tutor":
+        hw, hh = int(sz * 0.46), int(sz * 0.36)
+        page1 = (228, 222, 208) if active else (72, 70, 65)
+        page2 = (244, 240, 226) if active else (78, 75, 70)
+        lc = (148, 138, 122) if active else (58, 56, 52)
+        pygame.draw.rect(screen, page1, (cx - hw, cy - hh, hw, hh * 2))
+        pygame.draw.rect(screen, page2, (cx,      cy - hh, hw, hh * 2))
+        pygame.draw.line(screen, col, (cx, cy - hh), (cx, cy + hh), 2)
+        for k in range(4):
+            y = cy - hh + 7 + k * max(1, (hh * 2 - 14) // 4)
+            pygame.draw.line(screen, lc, (cx - hw + 5, y), (cx - 4, y), 1)
+            pygame.draw.line(screen, lc, (cx + 4,      y), (cx + hw - 5, y), 1)
+
+    elif tower_type == "energy_drink":
+        # Bliksemflits
+        pts = [
+            (cx + int(sz * 0.08),  cy - int(sz * 0.48)),
+            (cx - int(sz * 0.22),  cy + int(sz * 0.05)),
+            (cx + int(sz * 0.05),  cy + int(sz * 0.05)),
+            (cx - int(sz * 0.08),  cy + int(sz * 0.48)),
+            (cx + int(sz * 0.28),  cy - int(sz * 0.05)),
+            (cx - int(sz * 0.05),  cy - int(sz * 0.05)),
+        ]
+        pygame.draw.polygon(screen, col, pts)
+        if active:
+            pygame.draw.polygon(screen, (255, 160, 30), pts, 2)
+
+    elif tower_type == "chatgpt":
+        # Chatbubbel met "AI"
+        bw, bh = int(sz * 0.7), int(sz * 0.5)
+        pygame.draw.ellipse(screen, col, (cx - bw, cy - bh, bw * 2, bh * 2))
+        # Driehoekje onderaan bubbel
+        pygame.draw.polygon(screen, col, [
+            (cx - int(sz * 0.15), cy + bh - 2),
+            (cx + int(sz * 0.1), cy + bh - 2),
+            (cx - int(sz * 0.25), cy + bh + int(sz * 0.2)),
+        ])
+        outline = (50, 180, 170) if active else (55, 52, 48)
+        pygame.draw.ellipse(screen, outline, (cx - bw, cy - bh, bw * 2, bh * 2), 2)
+        # "AI" tekst
+        font = pygame.font.SysFont(None, max(12, int(sz * 0.55)), bold=True)
+        txt = font.render("AI", True, (255, 255, 255) if active else (90, 88, 82))
+        screen.blit(txt, (cx - txt.get_width() // 2, cy - txt.get_height() // 2))
+
+    elif tower_type == "pen_paper":
+        # Pen diagonaal over een papiertje
+        pw, ph = int(sz * 0.4), int(sz * 0.5)
+        paper = (230, 225, 210) if active else (72, 70, 65)
+        pygame.draw.rect(screen, paper, (cx - pw, cy - ph, pw * 2, ph * 2), border_radius=2)
+        pygame.draw.rect(screen, col, (cx - pw, cy - ph, pw * 2, ph * 2), 2, border_radius=2)
+        # Lijntjes op papier
+        lc = (148, 138, 122) if active else (58, 56, 52)
+        for k in range(4):
+            ly = cy - ph + int(ph * 0.35) + k * max(1, int(ph * 0.35))
+            pygame.draw.line(screen, lc, (cx - pw + 4, ly), (cx + pw - 4, ly), 1)
+        # Pen (diagonaal)
+        pen_col = (100, 100, 120) if active else (55, 52, 48)
+        pygame.draw.line(screen, pen_col,
+                         (cx + int(sz * 0.15), cy - int(sz * 0.4)),
+                         (cx - int(sz * 0.2), cy + int(sz * 0.35)), 3)
+        # Penpunt
+        pygame.draw.circle(screen, (220, 180, 50) if active else (60, 55, 45),
+                           (cx - int(sz * 0.2), cy + int(sz * 0.35)), 2)
+
+    elif tower_type == "motivatie":
+        # Vlam / vuur (motivatie-energie)
+        flame = col
+        # Buitenste vlam
+        pts_outer = [
+            (cx, cy - int(sz * 0.5)),
+            (cx + int(sz * 0.3), cy + int(sz * 0.1)),
+            (cx + int(sz * 0.2), cy + int(sz * 0.45)),
+            (cx - int(sz * 0.2), cy + int(sz * 0.45)),
+            (cx - int(sz * 0.3), cy + int(sz * 0.1)),
+        ]
+        pygame.draw.polygon(screen, flame, pts_outer)
+        # Binnenste vlam (lichter)
+        inner = (255, 200, 100) if active else (80, 75, 68)
+        pts_inner = [
+            (cx, cy - int(sz * 0.2)),
+            (cx + int(sz * 0.13), cy + int(sz * 0.15)),
+            (cx + int(sz * 0.1), cy + int(sz * 0.4)),
+            (cx - int(sz * 0.1), cy + int(sz * 0.4)),
+            (cx - int(sz * 0.13), cy + int(sz * 0.15)),
+        ]
+        pygame.draw.polygon(screen, inner, pts_inner)
+
+    elif tower_type == "hoorcolleges":
+        # Megafoon / luidspreker
+        # Trechter
+        pts = [
+            (cx - int(sz * 0.15), cy - int(sz * 0.15)),
+            (cx + int(sz * 0.45), cy - int(sz * 0.4)),
+            (cx + int(sz * 0.45), cy + int(sz * 0.4)),
+            (cx - int(sz * 0.15), cy + int(sz * 0.15)),
+        ]
+        pygame.draw.polygon(screen, col, pts)
+        pygame.draw.polygon(screen, (180, 150, 50) if active else (55, 52, 48), pts, 2)
+        # Handvat
+        pygame.draw.rect(screen, col,
+                         (cx - int(sz * 0.35), cy - int(sz * 0.12),
+                          int(sz * 0.22), int(sz * 0.24)), border_radius=2)
+        # Geluidsgolven
+        wave_col = (255, 230, 130) if active else (65, 62, 55)
+        for k in range(1, 3):
+            r = int(sz * 0.2) + k * int(sz * 0.12)
+            pygame.draw.arc(screen, wave_col,
+                            pygame.Rect(cx + int(sz * 0.3), cy - r, r * 2, r * 2),
+                            -0.6, 0.6, 2)
 
 
 class Game:
@@ -56,6 +209,8 @@ class Game:
         )
         self.game_manager = GameManager()
         init_tower_sprites()
+        init_ground_tiles(TILE_SIZE)
+        init_enemy_sprites()
 
         self.selected_tower_type = "coffee"
         self.tower_types_list = list(TOWER_TYPES.keys())
@@ -86,106 +241,46 @@ class Game:
             self.p2_tower_type = "coffee"
 
     def _setup_tower_cards(self) -> None:
-        """Bereken de klikbare kaart-rects voor torenselectie."""
+        """Bereken de klikbare kaart-rects voor torenselectie (2 rijen van 4)."""
         ui_y = GRID_ROWS * TILE_SIZE
-        card_w, card_h, gap = 110, 165, 14
-        n = len(self.tower_types_list)
-        total_w = n * card_w + (n - 1) * gap
-        # Centreer de kaarten in het rechtergedeelte van de UI-balk
-        x0 = (SCREEN_WIDTH + 360) // 2 - total_w // 2
-        card_top = ui_y + 13
+        ui_h = SCREEN_HEIGHT - ui_y
+        cols = 4
+        card_w, gap = 110, 10
+        row_gap = 8
+        pad_top = 8
+        card_h = (ui_h - pad_top * 2 - row_gap) // 2
+
+        # Beschikbare ruimte rechts van het info-paneel
+        info_w = 270
+        avail_w = SCREEN_WIDTH - info_w - 20
+        total_w = cols * card_w + (cols - 1) * gap
+        x0 = info_w + (avail_w - total_w) // 2
+
         self.tower_cards: dict[str, pygame.Rect] = {}
         for i, t in enumerate(self.tower_types_list):
-            self.tower_cards[t] = pygame.Rect(x0 + i * (card_w + gap), card_top, card_w, card_h)
+            row = i // cols
+            col = i % cols
+            x = x0 + col * (card_w + gap)
+            y = ui_y + pad_top + row * (card_h + row_gap)
+            self.tower_cards[t] = pygame.Rect(x, y, card_w, card_h)
 
     def _draw_tower_icon(self, tower_type: str, cx: int, cy: int,
                          sz: int, active: bool) -> None:
-        """Teken het icoon voor een torentype."""
-        # Probeer sprite te gebruiken
-        if has_tower_sprites():
-            sprite = get_tower_sprite(tower_type, (sz * 2, sz * 2))
-            if sprite:
-                if not active:
-                    # Grijstint voor niet-beschikbare torens
-                    gray_sprite = sprite.copy()
-                    gray_sprite.fill((60, 60, 60, 0), special_flags=pygame.BLEND_RGB_MULT)
-                    self.screen.blit(gray_sprite, (cx - sz, cy - sz))
-                else:
-                    self.screen.blit(sprite, (cx - sz, cy - sz))
-                return
-
-        # Fallback: originele getekende iconen
-        col = TOWER_TYPES[tower_type]["color"] if active else (68, 65, 60)
-
-        if tower_type == "coffee":
-            hw = int(sz * 0.52)
-            pts = [(cx - hw, cy - int(sz * 0.08)),
-                   (cx + hw, cy - int(sz * 0.08)),
-                   (cx + int(hw * 0.72), cy + int(sz * 0.5)),
-                   (cx - int(hw * 0.72), cy + int(sz * 0.5))]
-            pygame.draw.polygon(self.screen, col, pts)
-            pygame.draw.polygon(self.screen, (40, 25, 10), pts, 2)
-            pygame.draw.arc(self.screen, col,
-                            pygame.Rect(cx + int(hw * 0.58), cy, int(hw * 0.7), int(sz * 0.32)),
-                            -math.pi * 0.5, math.pi * 0.5, 3)
-            sc = (185, 188, 205) if active else (70, 68, 65)
-            for ox in (-int(sz * 0.2), 0, int(sz * 0.2)):
-                for k in range(2):
-                    y1 = cy - int(sz * 0.18) - k * 7
-                    pygame.draw.line(self.screen, sc,
-                                     (cx + ox, y1),
-                                     (cx + ox + ((-1) ** k) * 4, y1 - 5), 2)
-
-        elif tower_type == "study_group":
-            skin = (200, 168, 128) if active else (68, 65, 60)
-            for ox in (-int(sz * 0.28), int(sz * 0.28)):
-                pygame.draw.circle(self.screen, skin,
-                                   (cx + ox, cy - int(sz * 0.24)), int(sz * 0.17))
-                pygame.draw.line(self.screen, col,
-                                 (cx + ox, cy - int(sz * 0.06)),
-                                 (cx + ox, cy + int(sz * 0.32)), 3)
-                pygame.draw.line(self.screen, col,
-                                 (cx + ox - int(sz * 0.18), cy + int(sz * 0.1)),
-                                 (cx + ox + int(sz * 0.18), cy + int(sz * 0.1)), 2)
-
-        elif tower_type == "tutor":
-            hw, hh = int(sz * 0.46), int(sz * 0.36)
-            page1 = (228, 222, 208) if active else (72, 70, 65)
-            page2 = (244, 240, 226) if active else (78, 75, 70)
-            lc = (148, 138, 122) if active else (58, 56, 52)
-            pygame.draw.rect(self.screen, page1, (cx - hw, cy - hh, hw, hh * 2))
-            pygame.draw.rect(self.screen, page2, (cx,      cy - hh, hw, hh * 2))
-            pygame.draw.line(self.screen, col, (cx, cy - hh), (cx, cy + hh), 2)
-            for k in range(4):
-                y = cy - hh + 7 + k * max(1, (hh * 2 - 14) // 4)
-                pygame.draw.line(self.screen, lc, (cx - hw + 5, y), (cx - 4, y), 1)
-                pygame.draw.line(self.screen, lc, (cx + 4,      y), (cx + hw - 5, y), 1)
-
-        elif tower_type == "energy_drink":
-            pts = [
-                (cx + int(sz * 0.08),  cy - int(sz * 0.48)),
-                (cx - int(sz * 0.22),  cy + int(sz * 0.05)),
-                (cx + int(sz * 0.05),  cy + int(sz * 0.05)),
-                (cx - int(sz * 0.08),  cy + int(sz * 0.48)),
-                (cx + int(sz * 0.28),  cy - int(sz * 0.05)),
-                (cx - int(sz * 0.05),  cy - int(sz * 0.05)),
-            ]
-            pygame.draw.polygon(self.screen, col, pts)
-            if active:
-                pygame.draw.polygon(self.screen, (255, 160, 30), pts, 2)
+        """Teken het icoon voor een torentype (altijd hand-getekend)."""
+        draw_tower_icon(self.screen, tower_type, cx, cy, sz, active)
 
     def _draw_tower_cards(self, ui_y: int) -> None:
         """Teken de klikbare torenselectiekaarten."""
         mx, my = pygame.mouse.get_pos()
         rects = list(self.tower_cards.values())
 
-        # Houten tray achter de kaarten
+        # Houten tray achter de kaarten (omvat beide rijen)
         pad = 8
         tray = pygame.Rect(
             rects[0].x - pad - 6,
             rects[0].y - pad,
-            rects[-1].right - rects[0].x + (pad + 6) * 2,
-            rects[0].height + pad * 2,
+            max(r.right for r in rects) - rects[0].x + (pad + 6) * 2,
+            max(r.bottom for r in rects) - rects[0].y + pad * 2,
         )
         plank_h = tray.height // 3 + 1
         for i in range(3):
@@ -238,24 +333,46 @@ class Game:
                                   badge.centery - ns.get_height() // 2))
 
             # Icoon
+            icon_sz = int(min(rect.width, rect.height) * 0.28)
             self._draw_tower_icon(tower_type, rect.centerx,
-                                  rect.y + int(rect.height * 0.42),
-                                  int(min(rect.width, rect.height) * 0.33), can_afford)
+                                  rect.y + int(rect.height * 0.38),
+                                  icon_sz, can_afford)
 
             # Naam
             nc = (205, 195, 178) if can_afford else (92, 88, 80)
             name_s = name_font.render(config["name"], True, nc)
             self.screen.blit(name_s, (rect.centerx - name_s.get_width() // 2,
-                                      rect.bottom - 38))
+                                      rect.bottom - 30))
 
             # Energy-badge
             cc = YELLOW if can_afford else (98, 90, 62)
-            cost_s = cost_font.render(f"{config['cost']} Energy", True, cc)
-            cb_x = rect.centerx - cost_s.get_width() // 2 - 5
-            cb_y = rect.bottom - 20
+            cost_s = cost_font.render(f"{config['cost']}E", True, cc)
+            cb_x = rect.centerx - cost_s.get_width() // 2 - 4
+            cb_y = rect.bottom - 16
             pygame.draw.rect(self.screen, (28, 25, 20),
-                             (cb_x, cb_y, cost_s.get_width() + 10, 17), border_radius=3)
-            self.screen.blit(cost_s, (cb_x + 5, cb_y + 1))
+                             (cb_x, cb_y, cost_s.get_width() + 8, 15), border_radius=3)
+            self.screen.blit(cost_s, (cb_x + 4, cb_y + 1))
+
+        # Tooltip bij hover (teken als laatste zodat het bovenop alles ligt)
+        for tower_type, rect in self.tower_cards.items():
+            if rect.collidepoint(mx, my):
+                config = TOWER_TYPES[tower_type]
+                desc = config.get("desc", "")
+                if not desc:
+                    break
+                tip_font = pygame.font.SysFont(None, 20)
+                tip_s = tip_font.render(desc, True, (230, 225, 210))
+                tw = tip_s.get_width() + 16
+                th = tip_s.get_height() + 10
+                # Positie: boven de kaart, binnen scherm houden
+                tx = max(4, min(rect.centerx - tw // 2, SCREEN_WIDTH - tw - 4))
+                ty = rect.y - th - 6
+                if ty < 0:
+                    ty = rect.bottom + 6
+                pygame.draw.rect(self.screen, (24, 22, 18), (tx, ty, tw, th), border_radius=6)
+                pygame.draw.rect(self.screen, (160, 148, 110), (tx, ty, tw, th), 1, border_radius=6)
+                self.screen.blit(tip_s, (tx + 8, ty + 5))
+                break
 
     def handle_events(self) -> bool:
         """Verwerk input events.
@@ -555,8 +672,19 @@ class Game:
         for row in range(GRID_ROWS):
             for col in range(GRID_COLS):
                 rect = pygame.Rect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+                tile_idx = row * GRID_COLS + col
                 if self.grid_map.grid[row][col] == 1:
-                    pygame.draw.rect(self.screen, PATH_COLOR, rect)
+                    # Pad
+                    path_tile = get_path_tile(tile_idx)
+                    if path_tile:
+                        self.screen.blit(path_tile, rect)
+                    else:
+                        pygame.draw.rect(self.screen, PATH_COLOR, rect)
+                else:
+                    # Gras
+                    grass_tile = get_grass_tile(tile_idx)
+                    if grass_tile:
+                        self.screen.blit(grass_tile, rect)
                 pygame.draw.rect(self.screen, (80, 140, 60), rect, 1)
 
         # Teken torens

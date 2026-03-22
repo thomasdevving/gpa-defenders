@@ -7,6 +7,7 @@ import pygame
 import math
 from src.entities.entity import Entity
 from src.settings import ENEMY_TYPES, RED, GREEN, WHITE, BLACK
+from src.utils.asset_loader import get_enemy_frame, has_enemy_sprites
 
 
 class Enemy(Entity):
@@ -115,6 +116,9 @@ class Enemy(Entity):
         if self.waypoint_index >= len(self.waypoints):
             self.reached_end = True
 
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+
     def draw(self, screen: pygame.Surface) -> None:
         """Teken de vijand met een HP-balk.
 
@@ -124,9 +128,15 @@ class Enemy(Entity):
         if not self.alive:
             return
 
-        # Teken de vijand (cirkel)
-        pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.radius)
-        pygame.draw.circle(screen, BLACK, (int(self.x), int(self.y)), self.radius, 2)
+        # Probeer sprite icon te gebruiken
+        sprite = get_enemy_frame(self.enemy_type, getattr(self, 'anim_time', 0.0))
+        if sprite:
+            sz = self.radius * 2
+            screen.blit(sprite, (int(self.x) - sz // 2, int(self.y) - sz // 2))
+        else:
+            # Fallback: cirkel
+            pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.radius)
+            pygame.draw.circle(screen, BLACK, (int(self.x), int(self.y)), self.radius, 2)
 
         # HP balk boven de vijand
         bar_width = 24
@@ -248,22 +258,39 @@ class Professor(Enemy):
     def __init__(self, waypoints: list[tuple[int, int]]):
         super().__init__("professor", waypoints)
         self.regen_rate = 2.0  # HP per seconde
+        self.anim_time = 0.0
+        self._facing_right = True
 
     def update(self, dt: float) -> None:
         """Professors regenereren HP over tijd."""
+        old_x = self.x
         super().update(dt)
         if self.alive:
             self.hp = min(self.hp + self.regen_rate * dt, self.max_hp)
+            self.anim_time += dt
+            # Kijkrichting bepalen
+            if self.x > old_x:
+                self._facing_right = True
+            elif self.x < old_x:
+                self._facing_right = False
 
     def draw(self, screen: pygame.Surface) -> None:
-        """Teken professor groter dan normale vijanden."""
+        """Teken professor met geanimeerde sprite of fallback."""
         if not self.alive:
             return
 
-        # Professor is groter
         big_radius = self.radius + 6
-        pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), big_radius)
-        pygame.draw.circle(screen, BLACK, (int(self.x), int(self.y)), big_radius, 3)
+        sprite = get_enemy_frame("professor", self.anim_time)
+        if sprite:
+            # Flip als de professor naar links loopt
+            if not self._facing_right:
+                sprite = pygame.transform.flip(sprite, True, False)
+            sz = big_radius * 2 + 4
+            screen.blit(sprite, (int(self.x) - sz // 2, int(self.y) - sz // 2))
+        else:
+            # Fallback: cirkel
+            pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), big_radius)
+            pygame.draw.circle(screen, BLACK, (int(self.x), int(self.y)), big_radius, 3)
 
         # HP balk
         bar_width = 32

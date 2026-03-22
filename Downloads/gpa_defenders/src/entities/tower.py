@@ -170,6 +170,11 @@ class Tower(Entity):
             if sprite:
                 screen.blit(sprite, (int(self.x) - TILE_SIZE // 2,
                                      int(self.y) - TILE_SIZE // 2))
+                # Teken het menu-icoon bovenop de sprite
+                from main import draw_tower_icon
+                draw_tower_icon(screen, self.tower_type,
+                                int(self.x), int(self.y),
+                                self.size)
                 return
 
         # Fallback: vierkant als basis
@@ -181,8 +186,6 @@ class Tower(Entity):
         )
         pygame.draw.rect(screen, self.color, rect)
         pygame.draw.rect(screen, BLACK, rect, 2)
-
-        # Bereik tonen als geselecteerd (kan later toegevoegd worden)
 
     def draw_range(self, screen: pygame.Surface) -> None:
         """Teken het bereik van de toren (voor selectie).
@@ -206,18 +209,6 @@ class CoffeeTower(Tower):
     def __init__(self, grid_x: int, grid_y: int):
         super().__init__("coffee", grid_x, grid_y)
 
-    def draw(self, screen: pygame.Surface) -> None:
-        """Teken een koffiebeker."""
-        super().draw(screen)
-        # Koffie-icoon: kleine stoom lijntjes
-        for i in range(3):
-            start_x = int(self.x) - 6 + i * 6
-            pygame.draw.line(
-                screen, (200, 200, 200),
-                (start_x, int(self.y) - self.size - 2),
-                (start_x, int(self.y) - self.size - 8), 1
-            )
-
 
 class StudyGroupTower(Tower):
     """Vertraagt vijanden in plaats van veel schade te doen."""
@@ -236,51 +227,17 @@ class StudyGroupTower(Tower):
             result["slow_duration"] = self.slow_duration
         return result
 
-    def draw(self, screen: pygame.Surface) -> None:
-        """Teken een studiegroep icoon (meerdere kleine cirkels)."""
-        super().draw(screen)
-        # Teken kleine "personen" op de toren
-        offsets = [(-5, -3), (5, -3), (0, 4)]
-        for ox, oy in offsets:
-            pygame.draw.circle(
-                screen, (200, 220, 255),
-                (int(self.x) + ox, int(self.y) + oy), 3
-            )
-
-
 class TutorTower(Tower):
     """Hoge schade, langzaam. Goed tegen sterke vijanden."""
 
     def __init__(self, grid_x: int, grid_y: int):
         super().__init__("tutor", grid_x, grid_y)
 
-    def draw(self, screen: pygame.Surface) -> None:
-        """Teken een tutor icoon (groot met bril)."""
-        super().draw(screen)
-        # Bril-icoon
-        pygame.draw.circle(screen, (200, 200, 200), (int(self.x) - 4, int(self.y) - 2), 4, 1)
-        pygame.draw.circle(screen, (200, 200, 200), (int(self.x) + 4, int(self.y) - 2), 4, 1)
-        pygame.draw.line(screen, (200, 200, 200), (int(self.x), int(self.y) - 2), (int(self.x), int(self.y) - 2), 1)
-
-
 class EnergyDrinkTower(Tower):
     """Zeer snelle vuursnelheid, maar lage schade per schot."""
 
     def __init__(self, grid_x: int, grid_y: int):
         super().__init__("energy_drink", grid_x, grid_y)
-
-    def draw(self, screen: pygame.Surface) -> None:
-        """Teken een energy drink met bliksem."""
-        super().draw(screen)
-        # Bliksem icoon
-        points = [
-            (int(self.x) - 2, int(self.y) - 6),
-            (int(self.x) + 2, int(self.y) - 1),
-            (int(self.x) - 1, int(self.y) - 1),
-            (int(self.x) + 3, int(self.y) + 6),
-        ]
-        pygame.draw.lines(screen, BLACK, False, points, 2)
-
 
 class ChatGPTTower(Tower):
     """Specialist: kan alleen Quiz en Huiswerk targetten."""
@@ -308,7 +265,6 @@ class PenPaperTower(Tower):
 
     def __init__(self, grid_x: int, grid_y: int):
         super().__init__("pen_paper", grid_x, grid_y)
-
 
 class MotivatieTower(Tower):
     """Buff/support tower: draint alleen Attendance targets."""

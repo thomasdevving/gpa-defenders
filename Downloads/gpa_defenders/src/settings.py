@@ -73,6 +73,7 @@ BALANCE_MODEL_NAME = "bloons_round_pressure"
 TOWER_TYPES = {
     "coffee": {
         "name": "Koffie",
+        "desc": "Goedkoop en betrouwbaar. Schiet cafeïne-projectielen.",
         "cost": 5 * ECONOMY_SCALE,
         "costs": {"energy": 5 * ECONOMY_SCALE},
         "damage": 3.0,
@@ -84,6 +85,7 @@ TOWER_TYPES = {
     },
     "study_group": {
         "name": "Studiegroep",
+        "desc": "Vertraagt vijanden. Lage schade, maar sterk in combinatie.",
         "cost": 10 * ECONOMY_SCALE,
         "costs": {"energy": 10 * ECONOMY_SCALE},
         "damage": 0.9,
@@ -97,6 +99,7 @@ TOWER_TYPES = {
     },
     "tutor": {
         "name": "Tutor",
+        "desc": "Hoge schade, langzaam. Ideaal tegen sterke vijanden.",
         "cost": 24 * ECONOMY_SCALE,
         "costs": {"energy": 24 * ECONOMY_SCALE},
         "damage": 18.0,
@@ -108,6 +111,7 @@ TOWER_TYPES = {
     },
     "energy_drink": {
         "name": "Energy Drink",
+        "desc": "Razendsnelle vuursnelheid, maar lage schade per schot.",
         "cost": 12 * ECONOMY_SCALE,
         "costs": {"energy": 12 * ECONOMY_SCALE},
         "damage": 1.1,
@@ -119,6 +123,7 @@ TOWER_TYPES = {
     },
     "chatgpt": {
         "name": "ChatGPT",
+        "desc": "Specialist: kan alleen Quiz en Huiswerk targetten.",
         "cost": 20 * ECONOMY_SCALE,
         "costs": {"energy": 20 * ECONOMY_SCALE},
         "damage": 7.5,
@@ -130,6 +135,7 @@ TOWER_TYPES = {
     },
     "pen_paper": {
         "name": "Pen & Paper",
+        "desc": "Allround toren. Gemiddelde schade en bereik.",
         "cost": 14 * ECONOMY_SCALE,
         "costs": {"energy": 14 * ECONOMY_SCALE},
         "damage": 5.4,
@@ -141,6 +147,7 @@ TOWER_TYPES = {
     },
     "motivatie": {
         "name": "Motivatie",
+        "desc": "Richt alleen op Aanwezigheid. Breekt na 3 waves zonder upgrade.",
         "cost": 15 * ECONOMY_SCALE,
         "costs": {"energy": 15 * ECONOMY_SCALE},
         "damage": 1.4,  # langzaam drainen
@@ -152,6 +159,7 @@ TOWER_TYPES = {
     },
     "hoorcolleges": {
         "name": "Hoorcolleges",
+        "desc": "Valt niet aan. Buffed nabijgelegen torens passief.",
         "cost": 26 * ECONOMY_SCALE,  # duur support-bouwwerk
         "costs": {"energy": 26 * ECONOMY_SCALE},
         "damage": 0.0,

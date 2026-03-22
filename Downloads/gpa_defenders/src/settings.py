@@ -11,6 +11,35 @@ TILE_SIZE = 64
 GRID_COLS = SCREEN_WIDTH // TILE_SIZE
 GRID_ROWS = (SCREEN_HEIGHT - 150) // TILE_SIZE  # ruimte voor UI onderaan
 
+# Maps
+DEFAULT_MAP_ID = "campus_s"
+MAP_DEFINITIONS = {
+    "campus_s": {
+        "name": "Campus S-Route",
+        "waypoint_cells": [(-1, 2), (4, 2), (4, 5), (10, 5), (10, 2), (GRID_COLS, 2)],
+        "wave_pressure_multiplier": 1.00,
+    },
+    "library_rush": {
+        "name": "Library Rush",
+        "waypoint_cells": [(-1, 4), (5, 4), (5, 2), (9, 2), (9, 4), (GRID_COLS, 4)],
+        "wave_pressure_multiplier": 0.94,
+    },
+    "exam_marathon": {
+        "name": "Exam Marathon",
+        "waypoint_cells": [
+            (-1, 1),
+            (2, 1),
+            (2, 7),
+            (6, 7),
+            (6, 2),
+            (11, 2),
+            (11, 6),
+            (GRID_COLS, 6),
+        ],
+        "wave_pressure_multiplier": 1.10,
+    },
+}
+
 # Kleuren
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -33,7 +62,12 @@ FAILING_GPA = 5.5
 
 # Economy
 ECONOMY_SCALE = 40
-STARTING_ENERGY = 30 * ECONOMY_SCALE
+STARTING_ENERGY = 16 * ECONOMY_SCALE
+WAVE_CLEAR_ENERGY_BASE = int(0.55 * ECONOMY_SCALE)
+WAVE_CLEAR_ENERGY_GROWTH = int(0.28 * ECONOMY_SCALE)
+
+# Balancemodel (geinspireerd door de rondedruk/economiecurve uit Bloons TD).
+BALANCE_MODEL_NAME = "bloons_round_pressure"
 
 # Tower definities: (naam, kosten, schade, bereik, vuursnelheid, kleur)
 TOWER_TYPES = {
@@ -41,85 +75,85 @@ TOWER_TYPES = {
         "name": "Koffie",
         "cost": 5 * ECONOMY_SCALE,
         "costs": {"energy": 5 * ECONOMY_SCALE},
-        "damage": 2,
+        "damage": 3.0,
         "range": 120,
-        "fire_rate": 1.0,  # schoten per seconde
+        "fire_rate": 1.1,  # schoten per seconde
         "color": BROWN,
         "projectile_color": ORANGE,
-        "projectile_speed": 300,
+        "projectile_speed": 320,
     },
     "study_group": {
         "name": "Studiegroep",
         "cost": 10 * ECONOMY_SCALE,
         "costs": {"energy": 10 * ECONOMY_SCALE},
-        "damage": 1,
-        "range": 100,
-        "fire_rate": 0.5,
+        "damage": 0.9,
+        "range": 108,
+        "fire_rate": 0.7,
         "color": BLUE,
         "projectile_color": LIGHT_BLUE,
-        "projectile_speed": 200,
-        "slow_factor": 0.5,  # vertraagt vijanden
-        "slow_duration": 2.0,
+        "projectile_speed": 215,
+        "slow_factor": 0.62,  # vertraagt vijanden
+        "slow_duration": 2.4,
     },
     "tutor": {
         "name": "Tutor",
-        "cost": 30 * ECONOMY_SCALE,
-        "costs": {"energy": 30 * ECONOMY_SCALE},
-        "damage": 14,
-        "range": 150,
-        "fire_rate": 0.25,
+        "cost": 24 * ECONOMY_SCALE,
+        "costs": {"energy": 24 * ECONOMY_SCALE},
+        "damage": 18.0,
+        "range": 170,
+        "fire_rate": 0.35,
         "color": DARK_GREEN,
         "projectile_color": GREEN,
-        "projectile_speed": 250,
+        "projectile_speed": 265,
     },
     "energy_drink": {
         "name": "Energy Drink",
-        "cost": 15 * ECONOMY_SCALE,
-        "costs": {"energy": 15 * ECONOMY_SCALE},
-        "damage": 1,
-        "range": 100,
-        "fire_rate": 3.0,
+        "cost": 12 * ECONOMY_SCALE,
+        "costs": {"energy": 12 * ECONOMY_SCALE},
+        "damage": 1.1,
+        "range": 95,
+        "fire_rate": 4.0,
         "color": YELLOW,
         "projectile_color": YELLOW,
-        "projectile_speed": 400,
+        "projectile_speed": 430,
     },
     "chatgpt": {
         "name": "ChatGPT",
-        "cost": 500,
-        "costs": {"energy": 500},
-        "damage": 6,
-        "range": 145,
-        "fire_rate": 0.9,
+        "cost": 20 * ECONOMY_SCALE,
+        "costs": {"energy": 20 * ECONOMY_SCALE},
+        "damage": 7.5,
+        "range": 150,
+        "fire_rate": 1.25,
         "color": (90, 220, 210),
         "projectile_color": (120, 250, 230),
-        "projectile_speed": 280,
+        "projectile_speed": 300,
     },
     "pen_paper": {
         "name": "Pen & Paper",
-        "cost": 12 * ECONOMY_SCALE,
-        "costs": {"energy": 12 * ECONOMY_SCALE},
-        "damage": 4,
-        "range": 130,
-        "fire_rate": 0.8,
+        "cost": 14 * ECONOMY_SCALE,
+        "costs": {"energy": 14 * ECONOMY_SCALE},
+        "damage": 5.4,
+        "range": 132,
+        "fire_rate": 0.95,
         "color": (170, 170, 190),
         "projectile_color": (230, 230, 255),
-        "projectile_speed": 260,
+        "projectile_speed": 275,
     },
     "motivatie": {
         "name": "Motivatie",
-        "cost": 16 * ECONOMY_SCALE,
-        "costs": {"energy": 16 * ECONOMY_SCALE},
-        "damage": 1.2,  # langzaam drainen
-        "range": 140,
-        "fire_rate": 1.0,
+        "cost": 15 * ECONOMY_SCALE,
+        "costs": {"energy": 15 * ECONOMY_SCALE},
+        "damage": 1.4,  # langzaam drainen
+        "range": 150,
+        "fire_rate": 1.15,
         "color": (255, 120, 170),
         "projectile_color": (255, 170, 210),
-        "projectile_speed": 220,
+        "projectile_speed": 235,
     },
     "hoorcolleges": {
         "name": "Hoorcolleges",
-        "cost": 32 * ECONOMY_SCALE,  # duur support-bouwwerk
-        "costs": {"energy": 32 * ECONOMY_SCALE},
+        "cost": 26 * ECONOMY_SCALE,  # duur support-bouwwerk
+        "costs": {"energy": 26 * ECONOMY_SCALE},
         "damage": 0.0,
         "range": 0,
         "fire_rate": 0.0,
@@ -140,19 +174,67 @@ TOWER_UPGRADES = {
     "chatgpt": {
         "chatgpt_plus": {
             "name": "ChatGPT+",
-            "cost": 12 * ECONOMY_SCALE,
-            "costs": {"energy": 12 * ECONOMY_SCALE},
-            "fire_rate_multiplier": 2.0,
+            "cost": 10 * ECONOMY_SCALE,
+            "costs": {"energy": 10 * ECONOMY_SCALE},
+            "fire_rate_multiplier": 1.55,
         }
     },
     "motivatie": {
         "lock_in": {
             "name": "Lock-in",
-            "cost": 10 * ECONOMY_SCALE,
-            "costs": {"energy": 10 * ECONOMY_SCALE},
-            "unlock_wave": 2,  # beschikbaar na wave 2
-            "efficiency_multiplier": 1.5,  # 150% efficiency
+            "cost": 9 * ECONOMY_SCALE,
+            "costs": {"energy": 9 * ECONOMY_SCALE},
+            "unlock_wave": 3,  # beschikbaar na wave 3
+            "efficiency_multiplier": 1.35,  # 135% efficiency
         }
+    },
+}
+
+# Run-based perks (backend-only; UI/flow kan deze later aanroepen).
+PERK_WAVE_INTERVAL = 3
+PERK_OFFER_COUNT = 3
+PERKS = {
+    "focus_mode": {
+        "name": "Focus Mode",
+        "description": "+8% tower damage.",
+        "max_stacks": 3,
+        "effects": {"damage_multiplier": 1.08},
+    },
+    "rapid_revision": {
+        "name": "Rapid Revision",
+        "description": "+12% vuursnelheid voor alle torens.",
+        "max_stacks": 3,
+        "effects": {"fire_rate_multiplier": 1.12},
+    },
+    "scholarship_grant": {
+        "name": "Scholarship Grant",
+        "description": "-10% bouwkosten.",
+        "max_stacks": 2,
+        "effects": {"tower_cost_multiplier": 0.90},
+    },
+    "side_hustle": {
+        "name": "Side Hustle",
+        "description": "+12% energy rewards op kills.",
+        "max_stacks": 3,
+        "effects": {"energy_reward_multiplier": 1.12},
+    },
+    "safe_exam_policy": {
+        "name": "Safe Exam Policy",
+        "description": "-10% GPA-schade bij leaks.",
+        "max_stacks": 2,
+        "effects": {"gpa_damage_multiplier": 0.90},
+    },
+    "projector_overclock": {
+        "name": "Projector Overclock",
+        "description": "+12% projectile snelheid.",
+        "max_stacks": 3,
+        "effects": {"projectile_speed_multiplier": 1.12},
+    },
+    "bonus_budget": {
+        "name": "Bonus Budget",
+        "description": "Direct +160 energy.",
+        "max_stacks": 4,
+        "effects": {"instant_energy": int(4.0 * ECONOMY_SCALE)},
     },
 }
 
@@ -160,59 +242,72 @@ TOWER_UPGRADES = {
 ENEMY_TYPES = {
     "quiz": {
         "name": "Quiz",
-        "hp": 10,
-        "speed": 60,
-        "gpa_damage": 0.1,
-        "rewards": {"energy": int(0.2 * ECONOMY_SCALE)},
+        "hp": 14,
+        "speed": 68,
+        "gpa_damage": 0.08,
+        "rewards": {"energy": int(0.24 * ECONOMY_SCALE)},
+        "threat": 1.0,
+        "unlock_wave": 1,
         "color": WHITE,
     },
     "huiswerk": {
         "name": "Huiswerk",
-        "hp": 8,
-        "speed": 120,
-        "gpa_damage": 0.2,
+        "hp": 11,
+        "speed": 118,
+        "gpa_damage": 0.13,
         "rewards": {"energy": int(0.3 * ECONOMY_SCALE)},
+        "threat": 1.45,
+        "unlock_wave": 2,
         "color": RED,
     },
     "attendance": {
         "name": "Aanwezigheid",
-        "hp": 22,
-        "speed": 50,
-        "gpa_damage": 0.15,
-        "rewards": {"energy": int(0.35 * ECONOMY_SCALE)},
+        "hp": 28,
+        "speed": 58,
+        "gpa_damage": 0.16,
+        "rewards": {"energy": int(0.42 * ECONOMY_SCALE)},
+        "threat": 2.3,
+        "unlock_wave": 3,
         "color": (255, 80, 140),
     },
     "opdracht": {
         "name": "Opdracht",
-        "hp": 58,
-        "speed": 45,
-        # Zelfde schade als Midterm + Endterm gecombineerd.
-        "gpa_damage": 1.3,
-        "rewards": {"energy": int(1.3 * ECONOMY_SCALE)},
+        "hp": 135,
+        "speed": 40,
+        "gpa_damage": 1.1,
+        "rewards": {"energy": int(1.55 * ECONOMY_SCALE)},
+        "threat": 11.5,
+        "unlock_wave": 9,
         "color": (180, 90, 220),
     },
     "midterm": {
         "name": "Midterm",
-        "hp": 40,
-        "speed": 35,
-        "gpa_damage": 0.5,
-        "rewards": {"energy": int(0.6 * ECONOMY_SCALE)},
+        "hp": 70,
+        "speed": 36,
+        "gpa_damage": 0.55,
+        "rewards": {"energy": int(0.95 * ECONOMY_SCALE)},
+        "threat": 6.0,
+        "unlock_wave": 5,
         "color": ORANGE,
     },
     "endterm": {
         "name": "Endterm",
-        "hp": 65,
-        "speed": 30,
-        "gpa_damage": 0.8,
-        "rewards": {"energy": int(0.8 * ECONOMY_SCALE)},
+        "hp": 105,
+        "speed": 32,
+        "gpa_damage": 0.82,
+        "rewards": {"energy": int(1.25 * ECONOMY_SCALE)},
+        "threat": 8.8,
+        "unlock_wave": 7,
         "color": (200, 110, 60),
     },
     "professor": {
         "name": "Professor",
-        "hp": 100,
+        "hp": 280,
         "speed": 25,
-        "gpa_damage": 1.0,
-        "rewards": {"energy": 2 * ECONOMY_SCALE},
+        "gpa_damage": 1.65,
+        "rewards": {"energy": int(4.5 * ECONOMY_SCALE)},
+        "threat": 34.0,
+        "unlock_wave": 10,
         "color": DARK_GRAY,
     },
 }

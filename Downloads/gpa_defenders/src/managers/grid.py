@@ -1,40 +1,54 @@
 """Grid/map beheer voor GPA Defenders."""
 
-from src.settings import SCREEN_WIDTH, TILE_SIZE, GRID_COLS, GRID_ROWS
+from src.settings import (
+    TILE_SIZE,
+    GRID_COLS,
+    GRID_ROWS,
+    DEFAULT_MAP_ID,
+    MAP_DEFINITIONS,
+)
 
 
 class GridMap:
     """Beheert het speelveld, pad en bouwregels."""
 
-    def __init__(self):
+    def __init__(self, map_id: str = DEFAULT_MAP_ID):
         self.grid: list[list[int]] = []
         self.waypoints: list[tuple[int, int]] = []
+        self.map_id = map_id
+        self.map_name = ""
+        self.wave_pressure_multiplier = 1.0
+        self.available_map_ids = tuple(MAP_DEFINITIONS.keys())
         self._setup_grid()
 
-    def _setup_grid(self) -> None:
-        """Maak het grid en definieer het vijandpad."""
-        self.grid = [[0 for _ in range(GRID_COLS)] for _ in range(GRID_ROWS)]
-        y_row_2 = 2 * TILE_SIZE + TILE_SIZE // 2
-        y_row_5 = 5 * TILE_SIZE + TILE_SIZE // 2
-        x_col_4 = 4 * TILE_SIZE + TILE_SIZE // 2
-        x_col_10 = 10 * TILE_SIZE + TILE_SIZE // 2
+    def _cell_to_pixel(self, grid_x: int, grid_y: int) -> tuple[int, int]:
+        """Converteer een gridcel naar pixel-coordinaten (celcentrum)."""
+        return (
+            grid_x * TILE_SIZE + TILE_SIZE // 2,
+            grid_y * TILE_SIZE + TILE_SIZE // 2,
+        )
 
-        # S-vormig voorbeeldpad
+    def _setup_grid(self) -> None:
+        """Maak het grid en definieer het vijandpad op basis van map data."""
+        self.grid = [[0 for _ in range(GRID_COLS)] for _ in range(GRID_ROWS)]
+        if self.map_id not in MAP_DEFINITIONS:
+            raise ValueError(f"Onbekende map id: {self.map_id}")
+
+        map_config = MAP_DEFINITIONS[self.map_id]
+        self.map_name = map_config["name"]
+        self.wave_pressure_multiplier = float(
+            map_config.get("wave_pressure_multiplier", 1.0)
+        )
+
+        waypoint_cells: list[tuple[int, int]] = map_config["waypoint_cells"]
         self.waypoints = [
-            (-TILE_SIZE // 2, y_row_2),
-            (x_col_4, y_row_2),
-            (x_col_4, y_row_5),
-            (x_col_10, y_row_5),
-            (x_col_10, y_row_2),
-            (SCREEN_WIDTH + TILE_SIZE // 2, y_row_2),
+            self._cell_to_pixel(grid_x, grid_y) for grid_x, grid_y in waypoint_cells
         ]
 
         # Markeer pad-cellen in het grid
-        for i in range(len(self.waypoints) - 1):
-            x1, y1 = self.waypoints[i]
-            x2, y2 = self.waypoints[i + 1]
-            gx1, gy1 = int(x1 // TILE_SIZE), int(y1 // TILE_SIZE)
-            gx2, gy2 = int(x2 // TILE_SIZE), int(y2 // TILE_SIZE)
+        for i in range(len(waypoint_cells) - 1):
+            gx1, gy1 = waypoint_cells[i]
+            gx2, gy2 = waypoint_cells[i + 1]
 
             if gy1 == gy2:  # horizontaal
                 for gx in range(min(gx1, gx2), max(gx1, gx2) + 1):

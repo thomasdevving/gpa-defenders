@@ -147,7 +147,6 @@ class GameManager:
             return False
 
         unlock_wave = int(upgrade.get("unlock_wave", 0))
-        # "Na wave N": niet tijdens die wave, wel vanaf de eerstvolgende pauze/frame erna.
         if current_wave < unlock_wave:
             return False
         if current_wave == unlock_wave and wave_active:

@@ -221,9 +221,11 @@ class Game:
         self.net: NetworkClient | None = network_client
         self.is_host = is_host
 
-        # Geselecteerde toren (voor verkoop-UI)
+        # Geselecteerde toren (voor verkoop/upgrade-UI)
         self.selected_tower = None
         self._sell_btn: pygame.Rect | None = None
+        self._upgrade_btns: dict[str, pygame.Rect] = {}
+        self._perk_card_rects: list[tuple[str, pygame.Rect]] = []
 
         # Snelheidsknop (rechtsboven, naast pauzeknop)
         self.speed_btn = pygame.Rect(SCREEN_WIDTH - 90, 8, 80, 38)
@@ -437,12 +439,31 @@ class Game:
         """Verwerk een muisklik: torenselectie, verkoop of toren plaatsen."""
         mx, my = pos
 
-        # Klik op verkoopknop (onderdeel van de sell panel)
+        # Klik op perk-kaart
+        if self.game_manager.has_pending_perk_choice():
+            for perk_id, rect in self._perk_card_rects:
+                if rect.collidepoint(mx, my):
+                    self.game_manager.apply_perk(perk_id)
+                    self._perk_card_rects = []
+                    return
+            return  # blokkeer andere clicks tijdens perk-keuze
+
+        # Klik op upgrade-knop
+        if self.selected_tower and self._upgrade_btns:
+            for uid, btn in self._upgrade_btns.items():
+                if btn.collidepoint(mx, my):
+                    self.game_manager.upgrade_tower_at(
+                        self.selected_tower.grid_x, self.selected_tower.grid_y,
+                        uid, self.wave_manager.wave, self.wave_manager.wave_active)
+                    return
+
+        # Klik op verkoopknop
         if self._sell_btn and self._sell_btn.collidepoint(mx, my) and self.selected_tower:
             self.game_manager.sell_tower_at(
                 self.selected_tower.grid_x, self.selected_tower.grid_y, self.grid_map)
             self.selected_tower = None
             self._sell_btn = None
+            self._upgrade_btns = {}
             return
 
         # Klik op snelheidsknop
@@ -566,44 +587,102 @@ class Game:
         pygame.draw.rect(self.screen, (80, 130, 210),
                          (bar_x, bar_y, int(bar_w * frac), 5), border_radius=2)
 
-    def _draw_sell_panel(self, tower) -> None:
-        """Teken de verkooppanel boven de geselecteerde toren."""
-        # Bereikscirkel
-        tower.draw_range(self.screen)
+    def _draw_tower_panel(self, tower) -> None:
+        """Teken het info-panel boven de geselecteerde toren (upgrades + verkoop)."""
+        from src.settings import TOWER_UPGRADES
 
-        pw, ph = 178, 84
-        # Positie boven de toren, binnen scherm houden
+        tower.draw_range(self.screen)
+        mx, my = pygame.mouse.get_pos()
+
+        # Verzamel beschikbare upgrades
+        upgrades = self.game_manager.get_tower_upgrades(tower.tower_type)
+        current_wave = self.wave_manager.wave
+        wave_active = self.wave_manager.wave_active
+
+        upgrade_rows: list[tuple[str, dict, bool, bool]] = []
+        for uid, ucfg in upgrades.items():
+            already = tower.has_upgrade(uid)
+            can = self.game_manager.can_upgrade_tower(
+                tower, uid, current_wave, wave_active)
+            upgrade_rows.append((uid, ucfg, can, already))
+
+        # Panel afmetingen
+        pw = 200
+        row_h = 28
+        ph = 60 + len(upgrade_rows) * (row_h + 4) + (30 if upgrade_rows else 0)
+
         px = max(4, min(int(tower.x) - pw // 2, SCREEN_WIDTH - pw - 4))
         py = max(4, int(tower.y) - TILE_SIZE // 2 - ph - 6)
 
-        # Achtergrond
         panel = pygame.Rect(px, py, pw, ph)
         pygame.draw.rect(self.screen, (28, 26, 22), panel, border_radius=8)
         pygame.draw.rect(self.screen, (228, 202, 98), panel, 2, border_radius=8)
 
-        # Naam
         nf = pygame.font.SysFont(None, 22, bold=True)
-        ns = nf.render(tower.name, True, WHITE)
-        self.screen.blit(ns, (panel.centerx - ns.get_width() // 2, panel.y + 8))
+        sf = pygame.font.SysFont(None, 18)
+        bf = pygame.font.SysFont(None, 19, bold=True)
 
-        # Verkoopwaarde
-        refund = int(tower.energy_cost * 0.70)
-        vf = pygame.font.SysFont(None, 20)
-        vs = vf.render(f"Verkoopt voor {refund} Energy", True, (170, 165, 140))
-        self.screen.blit(vs, (panel.centerx - vs.get_width() // 2, panel.y + 28))
+        # Naam
+        ns = nf.render(tower.name, True, WHITE)
+        self.screen.blit(ns, (panel.centerx - ns.get_width() // 2, panel.y + 6))
+
+        # Stats
+        stats = sf.render(
+            f"DMG {tower.damage:.1f}  RNG {tower.range}  SPD {tower.fire_rate:.1f}",
+            True, (160, 155, 140))
+        self.screen.blit(stats, (panel.centerx - stats.get_width() // 2, panel.y + 26))
+
+        # Upgrade knoppen
+        self._upgrade_btns = {}
+        btn_y = panel.y + 46
+        for uid, ucfg, can, already in upgrade_rows:
+            btn = pygame.Rect(panel.x + 8, btn_y, pw - 16, row_h)
+            self._upgrade_btns[uid] = btn
+
+            if already:
+                bg = (45, 55, 40)
+                border = (80, 130, 70)
+                label = f"{ucfg['name']} (actief)"
+                lbl_col = (120, 180, 110)
+            elif can:
+                hov = btn.collidepoint(mx, my)
+                bg = (55, 65, 35) if hov else (42, 50, 28)
+                border = (140, 180, 80)
+                cost = ucfg.get("cost", 0)
+                label = f"{ucfg['name']} — {cost}E"
+                lbl_col = (210, 230, 140)
+            else:
+                bg = (35, 32, 28)
+                border = (65, 60, 52)
+                cost = ucfg.get("cost", 0)
+                # Check reden
+                unlock_wave = ucfg.get("unlock_wave", 0)
+                if current_wave < unlock_wave:
+                    label = f"{ucfg['name']} (wave {unlock_wave}+)"
+                elif already:
+                    label = f"{ucfg['name']} (actief)"
+                else:
+                    label = f"{ucfg['name']} — {cost}E"
+                lbl_col = (90, 85, 75)
+
+            pygame.draw.rect(self.screen, bg, btn, border_radius=5)
+            pygame.draw.rect(self.screen, border, btn, 1, border_radius=5)
+            ls = bf.render(label, True, lbl_col)
+            self.screen.blit(ls, (btn.centerx - ls.get_width() // 2,
+                                  btn.centery - ls.get_height() // 2))
+            btn_y += row_h + 4
 
         # Verkoopknop
-        bw, bh = pw - 20, 26
-        self._sell_btn = pygame.Rect(panel.x + 10, panel.bottom - bh - 8, bw, bh)
-        mx, my = pygame.mouse.get_pos()
+        sell_y = btn_y + 4 if upgrade_rows else panel.y + 46
+        refund = int(tower.energy_cost * 0.70)
+        self._sell_btn = pygame.Rect(panel.x + 8, sell_y, pw - 16, row_h)
         hov = self._sell_btn.collidepoint(mx, my)
         pygame.draw.rect(self.screen, (160, 55, 35) if hov else (110, 35, 20),
                          self._sell_btn, border_radius=5)
         pygame.draw.rect(self.screen, (220, 90, 60), self._sell_btn, 1, border_radius=5)
-        bf = pygame.font.SysFont(None, 20, bold=True)
-        bs = bf.render("Verkopen", True, WHITE)
-        self.screen.blit(bs, (self._sell_btn.centerx - bs.get_width() // 2,
-                               self._sell_btn.centery - bs.get_height() // 2))
+        sell_label = bf.render(f"Verkopen (+{refund}E)", True, WHITE)
+        self.screen.blit(sell_label, (self._sell_btn.centerx - sell_label.get_width() // 2,
+                                      self._sell_btn.centery - sell_label.get_height() // 2))
 
     def _draw_speed_btn(self) -> None:
         """Teken de snelheidsknop in de UI-balk."""
@@ -647,6 +726,10 @@ class Game:
 
     def update(self, dt: float) -> None:
         """Update alle game objecten."""
+        # Pauzeer als er een perk-keuze openstaat
+        if self.game_manager.has_pending_perk_choice():
+            return
+
         self.game_manager.update(dt, self.wave_manager)
 
         # Detecteer einde van een wave en reset countdown
@@ -699,6 +782,21 @@ class Game:
         for proj in self.game_manager.projectiles:
             proj.draw(self.screen)
 
+        # Range preview: toon bereik van geselecteerde toren op muispositie
+        mx, my = pygame.mouse.get_pos()
+        grid_area = my < GRID_ROWS * TILE_SIZE
+        config = TOWER_TYPES.get(self.selected_tower_type)
+        if config and grid_area:
+            r = config["range"]
+            if r > 0:
+                # Snap naar grid-cel midden
+                gx = mx // TILE_SIZE * TILE_SIZE + TILE_SIZE // 2
+                gy = my // TILE_SIZE * TILE_SIZE + TILE_SIZE // 2
+                range_surf = pygame.Surface((r * 2, r * 2), pygame.SRCALPHA)
+                pygame.draw.circle(range_surf, (255, 255, 255, 35), (r, r), r)
+                pygame.draw.circle(range_surf, (255, 255, 255, 70), (r, r), r, 1)
+                self.screen.blit(range_surf, (gx - r, gy - r))
+
         if self.multiplayer and self.net is None:
             self._draw_p2_cursor()
 
@@ -708,14 +806,19 @@ class Game:
 
         # Sell panel boven geselecteerde toren
         if self.selected_tower:
-            self._draw_sell_panel(self.selected_tower)
+            self._draw_tower_panel(self.selected_tower)
         else:
             self._sell_btn = None
+            self._upgrade_btns = {}
 
         # Teken UI
         self._draw_ui()
         self._draw_speed_btn()
         self._draw_pause_btn()
+
+        # Perk-keuze overlay (bovenop alles)
+        if self.game_manager.has_pending_perk_choice():
+            self._draw_perk_overlay()
 
         pygame.display.flip()
 
@@ -730,6 +833,90 @@ class Game:
         bx, by = self.pause_btn.x + 11, self.pause_btn.y + 10
         pygame.draw.rect(self.screen, WHITE, (bx, by, 6, 18))
         pygame.draw.rect(self.screen, WHITE, (bx + 10, by, 6, 18))
+
+    def _draw_perk_overlay(self) -> None:
+        """Teken de perk-keuze overlay (pauzeert het spel)."""
+        choices = self.game_manager.get_pending_perk_choices()
+        if not choices:
+            return
+
+        mx, my = pygame.mouse.get_pos()
+
+        # Donkere overlay
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 150))
+        self.screen.blit(overlay, (0, 0))
+
+        # Titel
+        tf = pygame.font.SysFont(None, 42, bold=True)
+        ts = tf.render("Kies een Perk", True, (255, 220, 80))
+        self.screen.blit(ts, (SCREEN_WIDTH // 2 - ts.get_width() // 2, 80))
+
+        sf = pygame.font.SysFont(None, 22)
+        hint = sf.render(f"Wave {self.wave_manager.wave} voltooid!", True, (180, 175, 160))
+        self.screen.blit(hint, (SCREEN_WIDTH // 2 - hint.get_width() // 2, 118))
+
+        # Kaarten
+        card_w, card_h = 220, 180
+        gap = 24
+        n = len(choices)
+        total_w = n * card_w + (n - 1) * gap
+        x0 = SCREEN_WIDTH // 2 - total_w // 2
+        card_y = SCREEN_HEIGHT // 2 - card_h // 2
+
+        nf = pygame.font.SysFont(None, 24, bold=True)
+        df = pygame.font.SysFont(None, 19)
+        stf = pygame.font.SysFont(None, 18)
+
+        self._perk_card_rects = []
+        for i, choice in enumerate(choices):
+            cx = x0 + i * (card_w + gap)
+            rect = pygame.Rect(cx, card_y, card_w, card_h)
+            self._perk_card_rects.append((choice["id"], rect))
+
+            hov = rect.collidepoint(mx, my)
+            bg = (52, 48, 35) if hov else (35, 32, 26)
+            border = (255, 220, 80) if hov else (140, 130, 100)
+
+            pygame.draw.rect(self.screen, bg, rect, border_radius=10)
+            pygame.draw.rect(self.screen, border, rect, 2, border_radius=10)
+
+            # Naam
+            ns = nf.render(choice["name"], True, (255, 230, 130))
+            self.screen.blit(ns, (rect.centerx - ns.get_width() // 2, rect.y + 16))
+
+            # Beschrijving — woordwrap
+            desc = choice["description"]
+            words = desc.split()
+            lines: list[str] = []
+            line = ""
+            for w in words:
+                test = f"{line} {w}".strip()
+                if df.size(test)[0] <= card_w - 24:
+                    line = test
+                else:
+                    if line:
+                        lines.append(line)
+                    line = w
+            if line:
+                lines.append(line)
+
+            for j, ln in enumerate(lines):
+                ls = df.render(ln, True, (200, 195, 180))
+                self.screen.blit(ls, (rect.centerx - ls.get_width() // 2,
+                                      rect.y + 50 + j * 20))
+
+            # Stacks indicator
+            cur = choice["current_stacks"]
+            mx_s = choice["max_stacks"]
+            stack_txt = f"{'●' * cur}{'○' * (mx_s - cur)}  ({cur}/{mx_s})"
+            ss = stf.render(stack_txt, True, (160, 155, 130))
+            self.screen.blit(ss, (rect.centerx - ss.get_width() // 2, rect.bottom - 34))
+
+            # "Kies" hint bij hover
+            if hov:
+                ks = stf.render("Klik om te kiezen", True, (255, 220, 80))
+                self.screen.blit(ks, (rect.centerx - ks.get_width() // 2, rect.bottom - 16))
 
     def _draw_ui(self) -> None:
         """Teken de UI balk onderaan het scherm."""

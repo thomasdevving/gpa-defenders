@@ -192,72 +192,100 @@ def _window(surf: pygame.Surface, x: int, y: int, w: int = 26, h: int = 30) -> N
     pygame.draw.line(surf, (215, 238, 255), (x + 3, y + 3), (x + 6, y + 7), 1)
 
 
-# ── Schoolgebouw links: Basisschool met trapgevel en klokkentoren ─────────────
+# ── Schoolgebouw links: UvA Roeterseiland Complex (REC) ───────────────────────
+
+# REC kleuren
+_REC_BRICK  = (115, 75, 55)    # donkere baksteen
+_REC_BRICK_D = (85, 55, 40)    # donkerder accent
+_REC_GLASS  = (155, 195, 215)  # glazen brug/ramen
+_REC_GLASS_D = (110, 150, 175) # donkerder glas
+_REC_FRAME  = (75, 65, 58)     # donkere kozijnen
+_REC_CONC   = (185, 180, 172)  # beton accent
+_REC_TOWER  = (165, 160, 152)  # klokkentoren beton
+
 
 def _school_left(surf: pygame.Surface, cx: int, base: int) -> None:
-    bw, bh = 158, 148
+    """UvA Roeterseiland Complex: modern gebouw met glazen brug en toren."""
+    bw, bh = 170, 130
     bx, by = cx - bw // 2, base - bh
 
-    # Hoofdmuur
-    pygame.draw.rect(surf, _BRICK, (bx, by, bw, bh))
-    for row in range(0, bh, 13):
-        pygame.draw.line(surf, _BRICK_D, (bx, by + row), (bx + bw, by + row), 1)
+    # ── Linkervleugel (lager, oud deel) ──
+    lw, lh = 70, 110
+    lx, ly = bx, base - lh
+    pygame.draw.rect(surf, _REC_BRICK, (lx, ly, lw, lh))
+    pygame.draw.rect(surf, _REC_BRICK_D, (lx, ly, lw, lh), 2)
+    # Verticale raamstroken (kenmerkend voor REC)
+    for col in range(4):
+        rx = lx + 8 + col * 16
+        for row in range(4):
+            ry = ly + 10 + row * 25
+            pygame.draw.rect(surf, _REC_GLASS_D, (rx, ry, 8, 18))
+            pygame.draw.rect(surf, _REC_FRAME, (rx, ry, 8, 18), 1)
 
-    # Trapgevel (stepped gable) — typisch Nederlandse school
-    gable = [
-        (bx, by), (bx + bw, by),
-        (bx + bw, by - 12), (bx + bw - 22, by - 12),
-        (bx + bw - 22, by - 32), (bx + bw - 44, by - 32),
-        (bx + bw - 44, by - 52), (cx + 12, by - 52),
-        (cx + 12, by - 72), (cx - 12, by - 72),
-        (cx - 12, by - 52), (bx + 44, by - 52),
-        (bx + 44, by - 32), (bx + 22, by - 32),
-        (bx + 22, by - 12), (bx, by - 12),
-    ]
-    pygame.draw.polygon(surf, _BRICK, gable)
-    pygame.draw.polygon(surf, _BRICK_D, gable, 3)
+    # ── Rechtervleugel (lager, oud deel) ──
+    rw, rh = 70, 110
+    rx_r = bx + bw - rw
+    ry_r = base - rh
+    pygame.draw.rect(surf, _REC_BRICK, (rx_r, ry_r, rw, rh))
+    pygame.draw.rect(surf, _REC_BRICK_D, (rx_r, ry_r, rw, rh), 2)
+    for col in range(4):
+        rx = rx_r + 8 + col * 16
+        for row in range(4):
+            ry = ry_r + 10 + row * 25
+            pygame.draw.rect(surf, _REC_GLASS_D, (rx, ry, 8, 18))
+            pygame.draw.rect(surf, _REC_FRAME, (rx, ry, 8, 18), 1)
 
-    # Naambordje boven ingang
-    pygame.draw.rect(surf, (218, 198, 148), (bx + 32, by - 4, bw - 64, 20))
-    pygame.draw.rect(surf, _BAN_D, (bx + 32, by - 4, bw - 64, 20), 2)
-    lf = pygame.font.SysFont(None, 16)
-    lb = lf.render("BASISSCHOOL", True, (58, 38, 18))
+    # ── Glazen loopbrug (verbindt beide vleugels) ──
+    bridge_y = base - 85
+    bridge_h = 28
+    pygame.draw.rect(surf, _REC_GLASS, (lx + lw - 2, bridge_y, bw - 2 * lw + 4, bridge_h))
+    pygame.draw.rect(surf, _REC_FRAME, (lx + lw - 2, bridge_y, bw - 2 * lw + 4, bridge_h), 2)
+    # Reflectie op glas
+    pygame.draw.line(surf, (190, 220, 240),
+                     (lx + lw + 4, bridge_y + 4), (rx_r - 4, bridge_y + 4), 1)
+
+    # ── Bovenste verdieping (breed, modern, over de brug) ──
+    top_h = 55
+    top_y = bridge_y - top_h + 5
+    pygame.draw.rect(surf, _REC_BRICK_D, (bx - 5, top_y, bw + 10, top_h))
+    pygame.draw.rect(surf, (70, 50, 38), (bx - 5, top_y, bw + 10, top_h), 2)
+    # Verticale witte raamstroken bovenste deel
+    for col in range(10):
+        wx = bx + 4 + col * 17
+        pygame.draw.rect(surf, _REC_GLASS, (wx, top_y + 6, 6, top_h - 14))
+        pygame.draw.rect(surf, _REC_FRAME, (wx, top_y + 6, 6, top_h - 14), 1)
+
+    # ── Klokkentoren (smal, hoog, met klok bovenop) ──
+    tw, th = 22, 70
+    tx = cx - tw // 2
+    ty = top_y - th
+    pygame.draw.rect(surf, _REC_TOWER, (tx, ty, tw, th))
+    pygame.draw.rect(surf, (140, 135, 128), (tx, ty, tw, th), 2)
+    # Klok
+    pygame.draw.rect(surf, (40, 35, 30), (tx + 3, ty + 4, tw - 6, tw - 6))
+    pygame.draw.circle(surf, (220, 215, 200), (cx, ty + 4 + (tw - 6) // 2), 6)
+    pygame.draw.line(surf, (40, 35, 30), (cx, ty + 4 + (tw - 6) // 2),
+                     (cx, ty + 4 + (tw - 6) // 2 - 4), 2)
+    pygame.draw.line(surf, (40, 35, 30), (cx, ty + 4 + (tw - 6) // 2),
+                     (cx + 3, ty + 4 + (tw - 6) // 2), 1)
+
+    # ── Naambordje ──
+    pygame.draw.rect(surf, (218, 198, 148), (cx - 52, by - 4, 104, 18))
+    pygame.draw.rect(surf, _BAN_D, (cx - 52, by - 4, 104, 18), 2)
+    lf = pygame.font.SysFont(None, 14)
+    lb = lf.render("UvA ROETERSEILAND", True, (58, 38, 18))
     surf.blit(lb, (cx - lb.get_width() // 2, by))
 
-    # Ramen: 2 rijen × 3 kolommen
-    for row in range(2):
-        for col in range(3):
-            _window(surf, bx + 14 + col * 44, by + 20 + row * 58)
+    # ── Ingang (onder de brug) ──
+    dx, dy = cx - 14, base - 42
+    pygame.draw.rect(surf, _REC_GLASS, (dx, dy, 28, 42))
+    pygame.draw.rect(surf, _REC_FRAME, (dx, dy, 28, 42), 2)
+    pygame.draw.line(surf, _REC_FRAME, (cx, dy), (cx, base), 2)
 
-    # Deur met boog
-    dx, dy = cx - 18, base - 52
-    pygame.draw.rect(surf, _WIN_F, (dx, dy, 36, 52))
-    pygame.draw.rect(surf, _DOOR_C, (dx + 2, dy + 2, 32, 48))
-    pygame.draw.circle(surf, YELLOW, (dx + 28, dy + 26), 3)
-    pygame.draw.arc(surf, _WIN_F, pygame.Rect(dx, dy - 10, 36, 20), 0, math.pi, 4)
-
-    # Klokkentoren boven trapgevel
-    tx, tw, th = cx - 20, 40, 58
-    ty = by - 72 - th
-    pygame.draw.rect(surf, _BRICK_D, (tx, ty, tw, th))
-    # Klok-raam (rond)
-    pygame.draw.circle(surf, _WIN_F, (cx, ty + 22), 11)
-    pygame.draw.circle(surf, _WIN_G, (cx, ty + 22), 9)
-    pygame.draw.line(surf, _WIN_F, (cx, ty + 13), (cx, ty + 31), 2)
-    pygame.draw.line(surf, _WIN_F, (cx - 9, ty + 22), (cx + 9, ty + 22), 2)
-    # Puntdak toren
-    roof_pts = [(tx - 6, ty), (tx + tw + 6, ty), (cx, ty - 32)]
-    pygame.draw.polygon(surf, _ROOF_C, roof_pts)
-    pygame.draw.polygon(surf, _BAN_D, roof_pts, 2)
-    # Vlag
-    pygame.draw.line(surf, (115, 85, 48), (cx, ty - 32), (cx, ty - 68), 2)
-    pygame.draw.polygon(surf, RED,
-                        [(cx, ty - 68), (cx + 24, ty - 59), (cx, ty - 50)])
-
-    # Struikjes
-    for sx in [bx - 6, bx + 16, bx + bw - 20, bx + bw + 4]:
-        pygame.draw.circle(surf, _TREE_G, (sx, base - 6), 15)
-        pygame.draw.circle(surf, _TREE_D, (sx, base - 6), 15, 2)
+    # ── Struikjes en bomen ──
+    for sx in [bx - 8, bx + bw + 6]:
+        pygame.draw.circle(surf, _TREE_G, (sx, base - 8), 14)
+        pygame.draw.circle(surf, _TREE_D, (sx, base - 8), 14, 2)
 
 
 # ── Schoolgebouw rechts: UvA Science Park ─────────────────────────────────────

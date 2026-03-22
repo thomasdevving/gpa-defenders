@@ -28,6 +28,7 @@ class Enemy(Entity):
         waypoints: Lijst van (x, y) punten om te volgen.
         waypoint_index: Huidige waypoint index.
         slow_timer: Resterende tijd van slow effect.
+        active_slow_effects: Actieve slows per tower-id.
     """
 
     def __init__(self, enemy_type: str, waypoints: list[tuple[int, int]]):
@@ -49,6 +50,7 @@ class Enemy(Entity):
         self.waypoints = waypoints
         self.waypoint_index = 0
         self.slow_timer = 0.0
+        self.active_slow_effects: dict[int, dict[str, float]] = {}
         self.reached_end = False
         self.radius = 12
 
@@ -63,15 +65,50 @@ class Enemy(Entity):
             self.hp = 0
             self.alive = False
 
-    def apply_slow(self, factor: float, duration: float) -> None:
-        """Pas een vertraging toe op de vijand.
+    def _refresh_slow_state(self) -> None:
+        """Herbereken totale slow op basis van alle actieve tower-effects."""
+        if not self.active_slow_effects:
+            self.slow_timer = 0.0
+            self.current_speed = self.speed
+            return
+
+        combined_factor = 1.0
+        max_remaining = 0.0
+        for effect in self.active_slow_effects.values():
+            combined_factor *= effect["factor"]
+            max_remaining = max(max_remaining, effect["remaining"])
+
+        self.slow_timer = max_remaining
+        self.current_speed = self.speed * combined_factor
+
+    def apply_slow(
+        self,
+        factor: float,
+        duration: float,
+        source_id: int | None = None,
+    ) -> None:
+        """Pas een vertraging toe op de vijand per tower bron.
 
         Args:
             factor: Snelheidsfactor (0.5 = halve snelheid).
             duration: Duur van het effect in seconden.
+            source_id: Unieke id van de toren die de slow toepast.
         """
-        self.slow_timer = duration
-        self.current_speed = self.speed * factor
+        if factor <= 0 or duration <= 0:
+            return
+
+        key = -1 if source_id is None else int(source_id)
+        existing = self.active_slow_effects.get(key)
+        if existing is None:
+            self.active_slow_effects[key] = {
+                "factor": float(factor),
+                "remaining": float(duration),
+            }
+        else:
+            existing["factor"] = min(existing["factor"], float(factor))
+            existing["remaining"] = max(existing["remaining"], float(duration))
+
+        self._refresh_slow_state()
 
     def update(self, dt: float) -> None:
         """Beweeg richting het volgende waypoint.
@@ -82,11 +119,18 @@ class Enemy(Entity):
         if not self.alive or self.reached_end:
             return
 
-        # Update slow effect
-        if self.slow_timer > 0:
-            self.slow_timer -= dt
-            if self.slow_timer <= 0:
-                self.current_speed = self.speed
+        # Update actieve slows per bron.
+        if self.active_slow_effects:
+            expired: list[int] = []
+            for key, effect in self.active_slow_effects.items():
+                effect["remaining"] -= dt
+                if effect["remaining"] <= 0:
+                    expired.append(key)
+
+            for key in expired:
+                del self.active_slow_effects[key]
+
+            self._refresh_slow_state()
 
         # Beweeg naar waypoints zonder overshoot-oscillatie bij hoge snelheden.
         remaining_move = self.current_speed * dt

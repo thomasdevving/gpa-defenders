@@ -21,7 +21,8 @@ class Projectile(Entity):
 
     def __init__(self, x: float, y: float, target: Enemy,
                  damage: float, speed: float, color: tuple,
-                 slow_factor: float = 0.0, slow_duration: float = 0.0):
+                 slow_factor: float = 0.0, slow_duration: float = 0.0,
+                 slow_source_id: int | None = None):
         super().__init__(x, y)
         self.target = target
         self.damage = damage
@@ -29,6 +30,7 @@ class Projectile(Entity):
         self.color = color
         self.slow_factor = slow_factor
         self.slow_duration = slow_duration
+        self.slow_source_id = slow_source_id
         self.radius = 4
 
     def update(self, dt: float) -> None:
@@ -53,7 +55,11 @@ class Projectile(Entity):
         if distance < self.target.radius:
             self.target.take_damage(self.damage)
             if self.slow_factor > 0:
-                self.target.apply_slow(self.slow_factor, self.slow_duration)
+                self.target.apply_slow(
+                    self.slow_factor,
+                    self.slow_duration,
+                    self.slow_source_id,
+                )
             self.alive = False
             return
 

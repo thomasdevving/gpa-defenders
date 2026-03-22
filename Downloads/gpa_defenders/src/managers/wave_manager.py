@@ -53,6 +53,10 @@ class WaveManager:
     def _wave_budget(self, wave: int) -> float:
         """RBE-achtige budgetcurve (inspired by Bloons-achtige round pressure)."""
         budget = 14 + wave * 4 + int((wave ** 1.35) * 2.4)
+        if wave == 1:
+            budget *= 0.82
+        elif wave == 2:
+            budget *= 0.90
         if self._is_rush_wave(wave):
             budget *= 1.12
         if self._is_endurance_wave(wave):

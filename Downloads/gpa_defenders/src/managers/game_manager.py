@@ -48,10 +48,10 @@ class GameManager:
         self.pending_perk_choices: list[dict] = []
         self.applied_perks: list[str] = []
         self.perk_stacks: dict[str, int] = {}
-        self.global_damage_multiplier = 1.0
+        self.global_damage_multiplier = 1.5
         self.global_fire_rate_multiplier = 1.0
         self.global_tower_cost_multiplier = 1.0
-        self.global_energy_reward_multiplier = 1.0
+        self.global_energy_reward_multiplier = 1.25
         self.global_gpa_damage_multiplier = 1.0
         self.global_projectile_speed_multiplier = 1.0
         self.wave_clear_bonus_multiplier = 1.0
@@ -427,7 +427,9 @@ class GameManager:
                     result["damage"],
                     result["speed"] * self.global_projectile_speed_multiplier,
                     result["color"],
-                    result.get("slow_factor", 0), result.get("slow_duration", 0),
+                    result.get("slow_factor", 0),
+                    result.get("slow_duration", 0),
+                    result.get("slow_source_id"),
                 )
                 self.projectiles.append(proj)
 
@@ -447,7 +449,7 @@ class GameManager:
             if not enemy.alive and not enemy.reached_end:
                 for currency, amount in enemy.rewards.items():
                     if currency == "energy":
-                        amount = int(amount * energy_reward_multiplier)
+                        amount = int(round(amount * energy_reward_multiplier))
                     self.add_currency(currency, amount)
 
         # Verwijder dode objecten

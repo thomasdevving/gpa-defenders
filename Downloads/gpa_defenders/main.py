@@ -50,7 +50,10 @@ class Game:
         self.small_font = pygame.font.SysFont(None, 22)
 
         self.grid_map = GridMap()
-        self.wave_manager = WaveManager(self.grid_map.waypoints)
+        self.wave_manager = WaveManager(
+            self.grid_map.waypoints,
+            wave_pressure_multiplier=self.grid_map.wave_pressure_multiplier,
+        )
         self.game_manager = GameManager()
         init_tower_sprites()
 
@@ -467,7 +470,7 @@ class Game:
         self.screen.blit(ns, (panel.centerx - ns.get_width() // 2, panel.y + 8))
 
         # Verkoopwaarde
-        refund = int(tower.energy_cost * 0.75)
+        refund = int(tower.energy_cost * 0.70)
         vf = pygame.font.SysFont(None, 20)
         vs = vf.render(f"Verkoopt voor {refund} Energy", True, (170, 165, 140))
         self.screen.blit(vs, (panel.centerx - vs.get_width() // 2, panel.y + 28))

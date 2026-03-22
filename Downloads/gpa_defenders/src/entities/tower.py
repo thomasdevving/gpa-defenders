@@ -55,6 +55,7 @@ class Tower(Entity):
         self.target = None
         self.size = TILE_SIZE // 2 - 4
         self.applied_upgrades: set[str] = set()
+        self.is_broken = False
 
     def find_target(self, enemies: list[Enemy]) -> Enemy | None:
         """Zoek de dichtstbijzijnde vijand binnen bereik.
@@ -113,6 +114,9 @@ class Tower(Entity):
         Returns:
             Projectile info als er geschoten wordt.
         """
+        if self.is_broken:
+            return None
+
         self.fire_cooldown -= dt
 
         if enemies:
@@ -311,6 +315,8 @@ class MotivatieTower(Tower):
 
     def __init__(self, grid_x: int, grid_y: int):
         super().__init__("motivatie", grid_x, grid_y)
+        self.waves_until_break = 3
+        self.completed_waves = 0
 
     def find_target(self, enemies: list[Enemy]) -> Enemy | None:
         closest = None
@@ -321,10 +327,31 @@ class MotivatieTower(Tower):
             if not enemy.alive or enemy.reached_end:
                 continue
             dist = self.distance_to(enemy)
-            if dist <= self.range and dist < closest_dist:
+            # Global range: Motivatie mag overal op de map Attendance targetten.
+            if dist < closest_dist:
                 closest = enemy
                 closest_dist = dist
         return closest
+
+    def on_wave_completed(self) -> None:
+        """Na 3 voltooide waves breekt niet-geupgrade Motivatie."""
+        if self.is_broken or self.has_upgrade("lock_in"):
+            return
+        self.completed_waves += 1
+        if self.completed_waves >= self.waves_until_break:
+            self.is_broken = True
+
+    def repair(self) -> None:
+        """Herstel de toren en reset teller tot volgende break."""
+        self.is_broken = False
+        self.completed_waves = 0
+
+    def apply_upgrade(self, upgrade_id: str, upgrade_config: dict) -> bool:
+        """Lock-in houdt Motivatie permanent actief."""
+        upgraded = super().apply_upgrade(upgrade_id, upgrade_config)
+        if upgraded and upgrade_id == "lock_in":
+            self.is_broken = False
+        return upgraded
 
 
 class HoorcollegesTower(Tower):
